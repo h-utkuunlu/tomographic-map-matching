@@ -1,0 +1,11 @@
+[info] | -> Pair: demo-pcd2.pcd -> demo-pcd1.pcd
+[info] | Target x:  0.97823 y:  3.95097: z:  0.02621 t: -3.08708
+[info] | Result x:  0.95511 y:  3.94498: z:  0.02708 t: -3.09760
+[info] | Error: 0.02390m / 0.01052rad. Took 0.98706s
+[info] |
+[info] | -> Pair: demo-pcd1.pcd -> demo-pcd2.pcd
+[info] | Target x:  1.19205 y:  3.89180: z: -0.02621 t:  3.08708
+[info] | Result x:  1.14014 y:  3.89474: z: -0.02708 t:  3.09542
+[info] | Error: 0.05200m / 0.00834rad. Took 1.07632s
+[info] |
+[info] | Completed!

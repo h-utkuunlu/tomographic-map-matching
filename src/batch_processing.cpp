@@ -19,6 +19,8 @@ DEFINE_string(parameter_config, "",
               "JSON file with parameters. Results are appended");
 DEFINE_string(data_config, "",
               "Scenario file that delineates pairs to be tested");
+DEFINE_string(results_dir, "",
+              "Folder to save the results. Leave empty for not saving results");
 DEFINE_bool(visualize, false, "Enable visualizations");
 DEFINE_bool(debug, false, "Enable debugging logs");
 
@@ -189,15 +191,19 @@ int main(int argc, char **argv) {
                data_config["pairs"].size());
 
   // Output file
-  std::filesystem::path output_file_folder("/results");
-  std::filesystem::path output_file_path =
-      output_file_folder /
-      std::filesystem::path(matcher->GetName() + "-" + time_string + ".json");
+  std::filesystem::path output_file_path;
 
-  if (!std::filesystem::exists(output_file_folder)) {
-    std::filesystem::create_directory(output_file_folder);
+  if (!FLAGS_results_dir.empty()) {
+    std::filesystem::path output_file_folder("/results");
+    output_file_path =
+        output_file_folder /
+        std::filesystem::path(matcher->GetName() + "-" + time_string + ".json");
+
+    if (!std::filesystem::exists(output_file_folder)) {
+      std::filesystem::create_directory(output_file_folder);
+    }
+    spdlog::info("Output file: '{}'", output_file_path.string());
   }
-  spdlog::info("Output file: '{}'", output_file_path.string());
 
   // Start constructing output data
   json output_data;
@@ -234,7 +240,7 @@ int main(int argc, char **argv) {
       output_data["results"].push_back(stats);
 
       // Record results
-      {
+      if (!FLAGS_results_dir.empty()) {
         std::ofstream f(output_file_path);
         f << output_data.dump() << std::endl;
       }
@@ -313,9 +319,13 @@ int main(int argc, char **argv) {
     output_data["results"].push_back(stats);
 
     // Record results
-    {
+    if (!FLAGS_results_dir.empty()) {
       std::ofstream f(output_file_path);
       f << std::setw(2) << output_data << std::endl;
+    } else if (FLAGS_debug) {
+      std::stringstream output_str;
+      output_str << output_data["results"].back().dump(2);
+      spdlog::info("Output: {}", output_str.str());
     }
 
     // Visualization

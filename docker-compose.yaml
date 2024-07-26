@@ -1,0 +1,18 @@
+services:
+  tomographic_map_matching:
+    build: .
+    network_mode: host
+    environment:
+      - DISPLAY
+      - TERM
+    volumes:
+      - /dev/dri:/dev/dri
+      - /etc/localtime:/etc/localtime:ro
+      - ./:/home/user/tomographic-map-matching
+      - $DATA_DIR:/data:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]

@@ -1,0 +1,7 @@
+{
+    "algorithm": 0,
+    "grid_size": 0.05,
+    "slice_z_height": 0.05,
+    "consensus_use_rigid": true,
+    "cross_match": true
+}

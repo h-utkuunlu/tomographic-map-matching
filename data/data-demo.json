@@ -1,0 +1,7 @@
+{
+    "root": "../data",
+    "pairs": [
+        ["demo-pcd1.pcd", "demo-pcd2.pcd"],
+        ["demo-pcd2.pcd", "demo-pcd1.pcd"]
+    ]
+}
