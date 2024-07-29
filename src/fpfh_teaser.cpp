@@ -5,78 +5,60 @@
 #include <pcl/keypoints/harris_3d.h>
 #include <pcl/registration/correspondence_estimation.h>
 #include <pcl/registration/correspondence_rejection_one_to_one.h>
-#include <spdlog/spdlog.h>
 #include <tomographic_map_matching/fpfh_teaser.hpp>
 
 namespace map_matcher {
 
-void to_json(json &j, const FPFHTEASERParameters &p) {
-  to_json(j, static_cast<Parameters>(p));
-  j["normal_radius"] = p.normal_radius;
-  j["descriptor_radius"] = p.descriptor_radius;
-  j["response_method"] = p.response_method;
-  j["keypoint_radius"] = p.keypoint_radius;
-  j["corner_threshold"] = p.corner_threshold;
-  j["teaser_noise_bound"] = p.teaser_noise_bound;
-  j["teaser_verbose"] = p.teaser_verbose;
+FPFHTEASER::FPFHTEASER()
+  : MapMatcherBase()
+{
 }
 
-void from_json(const json &j, FPFHTEASERParameters &p) {
-  Parameters p_base;
-  from_json(j, p_base);
-  p = FPFHTEASERParameters(p_base);
-  if (j.contains("normal_radius"))
-    j.at("normal_radius").get_to(p.normal_radius);
-
-  if (j.contains("descriptor_radius"))
-    j.at("descriptor_radius").get_to(p.descriptor_radius);
-
-  if (j.contains("keypoint_radius"))
-    j.at("keypoint_radius").get_to(p.keypoint_radius);
-
-  if (j.contains("response_method"))
-    j.at("response_method").get_to(p.response_method);
-
-  if (j.contains("corner_threshold"))
-    j.at("corner_threshold").get_to(p.corner_threshold);
-
-  if (j.contains("teaser_noise_bound"))
-    j.at("teaser_noise_bound").get_to(p.teaser_noise_bound);
-
-  if (j.contains("teaser_verbose"))
-    j.at("teaser_verbose").get_to(p.teaser_verbose);
+FPFHTEASER::FPFHTEASER(const json& parameters)
+  : MapMatcherBase(parameters)
+{
+  UpdateParameters(parameters);
 }
 
-FPFHTEASER::FPFHTEASER() : MapMatcherBase() {}
+void
+FPFHTEASER::GetParameters(json& output) const
+{
+  MapMatcherBase::GetParameters(output);
+  output["normal_radius"] = normal_radius_;
+  output["descriptor_radius"] = descriptor_radius_;
+  output["keypoint_radius"] = keypoint_radius_;
+  output["response_method"] = response_method_;
+  output["corner_threshold"] = corner_threshold_;
+  output["teaser_noise_bound"] = teaser_noise_bound_;
+  output["teaser_verbose"] = teaser_verbose_;
+}
 
-FPFHTEASER::FPFHTEASER(FPFHTEASERParameters parameters)
-    : MapMatcherBase(static_cast<Parameters>(parameters)),
-      parameters_(parameters) {
-  if (parameters_.response_method < 1 or parameters_.response_method > 5) {
+void
+FPFHTEASER::UpdateParameters(const json& input)
+{
+
+  UpdateSingleParameter(input, "normal_radius", normal_radius_);
+  UpdateSingleParameter(input, "descriptor_radius", descriptor_radius_);
+  UpdateSingleParameter(input, "keypoint_radius", keypoint_radius_);
+
+  UpdateSingleParameter(input, "response_method", response_method_);
+
+  if (response_method_ < 1 or response_method_ > 5) {
     spdlog::warn("Corner response method must be in the range 1-5 (Harris, "
                  "Noble, Lowe, Tomasi, Curvature). Defaulting to Harris");
-    parameters_.response_method = 1;
+    response_method_ = 1;
   }
+
+  UpdateSingleParameter(input, "corner_threshold", corner_threshold_);
+  UpdateSingleParameter(input, "teaser_noise_bound", teaser_noise_bound_);
+  UpdateSingleParameter(input, "teaser_verbose", teaser_verbose_);
 }
 
-json FPFHTEASER::GetParameters() const {
-  json retval = parameters_;
-  return retval;
-}
-
-void FPFHTEASER::SetParameters(const json &parameters) {
-  parameters_ = parameters.template get<FPFHTEASERParameters>();
-
-  if (parameters_.response_method < 1 or parameters_.response_method > 5) {
-    spdlog::warn("Corner response method must be in the range 1-5 (Harris, "
-                 "Noble, Lowe, Tomasi, Curvature). Defaulting to Harris");
-    parameters_.response_method = 1;
-  }
-}
-
-void FPFHTEASER::DetectAndDescribeKeypoints(const PointCloud::Ptr input,
-                                            PointCloud::Ptr keypoints,
-                                            FeatureCloud::Ptr features) const {
+void
+FPFHTEASER::DetectAndDescribeKeypoints(const PointCloud::Ptr input,
+                                       PointCloud::Ptr keypoints,
+                                       FeatureCloud::Ptr features) const
+{
 
   spdlog::debug("PCD size: {}", input->size());
 
@@ -86,7 +68,7 @@ void FPFHTEASER::DetectAndDescribeKeypoints(const PointCloud::Ptr input,
   // Normals are needed for both keypoints and the FPFH
   NormalCloud::Ptr normals(new NormalCloud);
   pcl::NormalEstimationOMP<PointT, NormalT> normal_estimator;
-  normal_estimator.setRadiusSearch(parameters_.normal_radius);
+  normal_estimator.setRadiusSearch(normal_radius_);
   normal_estimator.setInputCloud(input);
   normal_estimator.compute(*normals);
 
@@ -96,11 +78,11 @@ void FPFHTEASER::DetectAndDescribeKeypoints(const PointCloud::Ptr input,
   // Keypoints
   KeypointCloud::Ptr keypoints_with_response(new KeypointCloud);
   KeypointDetector detector;
-  auto response_method = static_cast<KeypointDetector::ResponseMethod>(
-      parameters_.response_method);
+  auto response_method =
+    static_cast<KeypointDetector::ResponseMethod>(response_method_);
   detector.setMethod(response_method);
-  detector.setRadius(parameters_.keypoint_radius);
-  detector.setThreshold(parameters_.corner_threshold);
+  detector.setRadius(keypoint_radius_);
+  detector.setThreshold(corner_threshold_);
   detector.setInputCloud(input);
   detector.setNormals(normals);
   detector.setSearchMethod(normal_estimator.getSearchMethod());
@@ -118,7 +100,7 @@ void FPFHTEASER::DetectAndDescribeKeypoints(const PointCloud::Ptr input,
 
   // Calculate FPFH for the keypoints. Output to "features"
   pcl::FPFHEstimationOMP<PointT, NormalT, FeatureT> descriptor;
-  descriptor.setRadiusSearch(parameters_.descriptor_radius);
+  descriptor.setRadiusSearch(descriptor_radius_);
   descriptor.setInputCloud(keypoints);
   descriptor.setSearchSurface(input);
   descriptor.setInputNormals(normals);
@@ -128,10 +110,14 @@ void FPFHTEASER::DetectAndDescribeKeypoints(const PointCloud::Ptr input,
   spdlog::debug("Feature computation took {} s", CalculateTimeSince(timer));
 }
 
-void FPFHTEASER::ExtractInlierKeypoints(
-    const PointCloud::Ptr map1_pcd, const PointCloud::Ptr map2_pcd,
-    const pcl::CorrespondencesPtr correspondences, PointCloud::Ptr map1_inliers,
-    PointCloud::Ptr map2_inliers) const {
+void
+FPFHTEASER::ExtractInlierKeypoints(
+  const PointCloud::Ptr map1_pcd,
+  const PointCloud::Ptr map2_pcd,
+  const pcl::CorrespondencesPtr correspondences,
+  PointCloud::Ptr map1_inliers,
+  PointCloud::Ptr map2_inliers) const
+{
 
   // The assumption here is that the map1_pcd is the target (match), map2_pcd is
   // the source (query)
@@ -145,9 +131,11 @@ void FPFHTEASER::ExtractInlierKeypoints(
   }
 }
 
-HypothesisPtr FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
-                                                 const PointCloud::Ptr map2_pcd,
-                                                 json &stats) const {
+HypothesisPtr
+FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
+                                   const PointCloud::Ptr map2_pcd,
+                                   json& stats) const
+{
 
   if (map1_pcd->size() == 0 or map2_pcd->size() == 0) {
     spdlog::critical("Pointcloud(s) are empty. Aborting");
@@ -161,9 +149,9 @@ HypothesisPtr FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
 
   // Compute keypoints and features
   PointCloud::Ptr map1_keypoints(new PointCloud),
-      map2_keypoints(new PointCloud);
+    map2_keypoints(new PointCloud);
   FeatureCloud::Ptr map1_features(new FeatureCloud),
-      map2_features(new FeatureCloud);
+    map2_features(new FeatureCloud);
 
   DetectAndDescribeKeypoints(map1_pcd, map1_keypoints, map1_features);
   DetectAndDescribeKeypoints(map2_pcd, map2_keypoints, map2_features);
@@ -178,7 +166,7 @@ HypothesisPtr FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
 
   // Matching & registration
   pcl::registration::CorrespondenceEstimation<FeatureT, FeatureT>
-      correspondence_estimator;
+    correspondence_estimator;
   pcl::CorrespondencesPtr correspondences(new pcl::Correspondences);
   correspondence_estimator.setInputSource(map2_features);
   correspondence_estimator.setInputTarget(map1_features);
@@ -195,8 +183,10 @@ HypothesisPtr FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
 
   // Extract selected keypoints
   PointCloud::Ptr map1_inliers(new PointCloud), map2_inliers(new PointCloud);
-  ExtractInlierKeypoints(map1_keypoints, map2_keypoints,
-                         correspondences_one_to_one, map1_inliers,
+  ExtractInlierKeypoints(map1_keypoints,
+                         map2_keypoints,
+                         correspondences_one_to_one,
+                         map1_inliers,
                          map2_inliers);
 
   // Registration with TEASER++
@@ -214,20 +204,20 @@ HypothesisPtr FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
     }
 
     teaser::RobustRegistrationSolver::Params params;
-    params.noise_bound = parameters_.teaser_noise_bound;
+    params.noise_bound = teaser_noise_bound_;
     params.cbar2 = 1;
     params.estimate_scaling = false;
     params.rotation_max_iterations = 100;
     params.rotation_gnc_factor = 1.4;
     params.rotation_estimation_algorithm =
-        teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::QUATRO;
+      teaser::RobustRegistrationSolver::ROTATION_ESTIMATION_ALGORITHM::QUATRO;
     params.rotation_cost_threshold = 0.0002;
     params.inlier_selection_mode =
-        teaser::RobustRegistrationSolver::INLIER_SELECTION_MODE::PMC_HEU;
+      teaser::RobustRegistrationSolver::INLIER_SELECTION_MODE::PMC_HEU;
     auto solver = std::make_unique<teaser::RobustRegistrationSolver>(params);
 
     // Disable verbose output to stdout
-    if (!parameters_.teaser_verbose)
+    if (!teaser_verbose_)
       std::cout.setstate(std::ios_base::failbit);
     teaser::RegistrationSolution solution = solver->solve(pcd2eig, pcd1eig);
     std::cout.clear();
@@ -237,7 +227,7 @@ HypothesisPtr FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
     result->inlier_points_2 = PointCloud::Ptr(new PointCloud());
 
     std::vector<int> inlier_mask = solver->getInlierMaxClique();
-    for (const auto &idx : inlier_mask) {
+    for (const auto& idx : inlier_mask) {
       const auto &pt1 = map1_inliers->points[idx],
                  &pt2 = map2_inliers->points[idx];
       result->inlier_points_1->push_back(pt1);
@@ -282,18 +272,20 @@ HypothesisPtr FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   return result;
 }
 
-void FPFHTEASER::VisualizeKeypoints(const PointCloud::Ptr points,
-                                    const PointCloud::Ptr keypoints) const {
+void
+FPFHTEASER::VisualizeKeypoints(const PointCloud::Ptr points,
+                               const PointCloud::Ptr keypoints) const
+{
 
   pcl::visualization::PCLVisualizer viewer("Keypoints");
   PointCloudColor points_color(points, 155, 0, 0),
-      keypoints_color(keypoints, 0, 155, 0);
+    keypoints_color(keypoints, 0, 155, 0);
 
   viewer.addPointCloud(points, points_color, "points");
   viewer.addPointCloud(keypoints, keypoints_color, "keypoints");
 
   viewer.setPointCloudRenderingProperties(
-      pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "keypoints");
+    pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "keypoints");
 
   viewer.spin();
 }

@@ -17,38 +17,22 @@ typedef pcl::PointCloud<FeatureT> FeatureCloud;
 
 typedef pcl::HarrisKeypoint3D<PointT, KeypointT> KeypointDetector;
 
-struct FPFHTEASERParameters : public Parameters {
-  FPFHTEASERParameters() = default;
-  FPFHTEASERParameters(const FPFHTEASERParameters &) = default;
-  FPFHTEASERParameters(const Parameters &p) : Parameters(p) {}
-  float normal_radius = 0.3;
-  float keypoint_radius = 0.2;
-  int response_method = 1;
-  float corner_threshold = 0.0;
-  float descriptor_radius = 0.5;
-  double teaser_noise_bound = 0.02;
-  size_t teaser_num_correspondences_max = 10000;
-  bool teaser_verbose = false;
-};
-
-void to_json(json &j, const FPFHTEASERParameters &p);
-void from_json(const json &j, FPFHTEASERParameters &p);
-
-class FPFHTEASER : public MapMatcherBase {
+class FPFHTEASER : public MapMatcherBase
+{
 public:
   FPFHTEASER();
-  FPFHTEASER(FPFHTEASERParameters parameters);
-  json GetParameters() const override;
-  void SetParameters(const json &parameters);
-  HypothesisPtr RegisterPointCloudMaps(const PointCloud::Ptr pcd1,
-                                       const PointCloud::Ptr pcd2,
-                                       json &stats) const override;
-  void VisualizeKeypoints(const PointCloud::Ptr pcd,
-                          const PointCloud::Ptr keypoints) const;
+  FPFHTEASER(const json& parameters);
+  void GetParameters(json& output) const override;
+  void UpdateParameters(const json& input) override;
   std::string GetName() const override { return "FPFH-TEASER"; }
 
+  HypothesisPtr RegisterPointCloudMaps(const PointCloud::Ptr pcd1,
+                                       const PointCloud::Ptr pcd2,
+                                       json& stats) const override;
+  void VisualizeKeypoints(const PointCloud::Ptr pcd,
+                          const PointCloud::Ptr keypoints) const;
+
 private:
-  FPFHTEASERParameters parameters_;
   void ExtractInlierKeypoints(const PointCloud::Ptr map1_pcd,
                               const PointCloud::Ptr map2_pcd,
                               const pcl::CorrespondencesPtr correspondences,
@@ -57,6 +41,15 @@ private:
   void DetectAndDescribeKeypoints(const PointCloud::Ptr input,
                                   PointCloud::Ptr keypoints,
                                   FeatureCloud::Ptr features) const;
+
+  float normal_radius_ = 0.3;
+  float keypoint_radius_ = 0.2;
+  int response_method_ = 1;
+  float corner_threshold_ = 0.0;
+  float descriptor_radius_ = 0.5;
+  double teaser_noise_bound_ = 0.02;
+  size_t teaser_num_correspondences_max_ = 10000;
+  bool teaser_verbose_ = false;
 };
 
 } // namespace map_matcher

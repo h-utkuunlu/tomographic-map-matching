@@ -93,12 +93,18 @@ RUN git clone --depth 1 https://github.com/MIT-SPARK/TEASER-plusplus \
     -DBUILD_WITH_MARCH_NATIVE=ON .. \
     && sudo make -j8 install
 
-# Map Matching Library & other tools
+# Map Matching Library
 RUN sudo apt-get install -y --no-install-recommends \
     libspdlog-dev \
     libgflags-dev \
     nlohmann-json3-dev \
-    clangd \
     && sudo apt-get clean
 
 RUN sudo install -d -o $USERNAME -g $USERNAME /data
+
+# Dev tools
+RUN sudo apt-get install -y --no-install-recommends \
+    clangd \
+    clang-format \
+    zsh \
+    && sudo apt-get clean

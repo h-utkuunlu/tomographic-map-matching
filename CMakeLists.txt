@@ -27,6 +27,7 @@ find_package(fmt REQUIRED)  # spdlog depends on fmt, but still
 # Library
 add_library(${PROJECT_NAME} SHARED
   src/map_matcher_base.cpp
+  src/tomographic_matcher.cpp
   src/consensus.cpp
   src/orb_teaser.cpp
   src/fpfh_ransac.cpp
