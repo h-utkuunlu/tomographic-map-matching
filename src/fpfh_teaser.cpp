@@ -33,12 +33,12 @@ FPFHTEASER::UpdateParameters(const json& input)
 }
 
 HypothesisPtr
-FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
-                                   const PointCloud::Ptr map2_pcd,
+FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr source,
+                                   const PointCloud::Ptr target,
                                    json& stats) const
 {
 
-  if (map1_pcd->size() == 0 or map2_pcd->size() == 0) {
+  if (target->size() == 0 or source->size() == 0) {
     spdlog::critical("Pointcloud(s) are empty. Aborting");
     return HypothesisPtr(new Hypothesis());
   }
@@ -49,15 +49,16 @@ FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   indiv = std::chrono::steady_clock::now();
 
   // Compute keypoints and features
-  PointCloud::Ptr map1_keypoints(new PointCloud), map2_keypoints(new PointCloud);
-  FeatureCloud::Ptr map1_features(new FeatureCloud), map2_features(new FeatureCloud);
+  PointCloud::Ptr target_keypoints(new PointCloud), source_keypoints(new PointCloud);
+  FeatureCloud::Ptr target_features(new FeatureCloud),
+    source_features(new FeatureCloud);
 
-  DetectAndDescribeKeypoints(map1_pcd, map1_keypoints, map1_features);
-  DetectAndDescribeKeypoints(map2_pcd, map2_keypoints, map2_features);
+  DetectAndDescribeKeypoints(target, target_keypoints, target_features);
+  DetectAndDescribeKeypoints(source, source_keypoints, source_features);
 
   stats["t_feature_extraction"] = CalculateTimeSince(indiv);
-  stats["map1_num_features"] = map1_features->size();
-  stats["map2_num_features"] = map2_features->size();
+  stats["target_num_features"] = target_features->size();
+  stats["source_num_features"] = source_features->size();
 
   spdlog::debug("Feature extraction took {} s",
                 stats["t_feature_extraction"].template get<double>());
@@ -67,8 +68,8 @@ FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   pcl::registration::CorrespondenceEstimation<FeatureT, FeatureT>
     correspondence_estimator;
   pcl::CorrespondencesPtr correspondences(new pcl::Correspondences);
-  correspondence_estimator.setInputSource(map2_features);
-  correspondence_estimator.setInputTarget(map1_features);
+  correspondence_estimator.setInputSource(source_features);
+  correspondence_estimator.setInputTarget(target_features);
   correspondence_estimator.determineCorrespondences(*correspondences);
   spdlog::debug("Matching complete");
 
@@ -81,22 +82,22 @@ FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
                 correspondences_one_to_one->size());
 
   // Extract selected keypoints
-  PointCloud::Ptr map1_inliers(new PointCloud), map2_inliers(new PointCloud);
-  ExtractInlierKeypoints(map1_keypoints,
-                         map2_keypoints,
+  PointCloud::Ptr target_inliers(new PointCloud), source_inliers(new PointCloud);
+  ExtractInlierKeypoints(source_keypoints,
+                         target_keypoints,
                          correspondences_one_to_one,
-                         map1_inliers,
-                         map2_inliers);
+                         source_inliers,
+                         target_inliers);
 
   // Registration with TEASER++
   HypothesisPtr result(new Hypothesis());
 
   {
     // Convert to Eigen
-    size_t N = map1_inliers->size();
+    size_t N = target_inliers->size();
     Eigen::Matrix<double, 3, Eigen::Dynamic> pcd1eig(3, N), pcd2eig(3, N);
     for (size_t i = 0; i < N; ++i) {
-      const PointT &pt1 = map1_inliers->points[i], pt2 = map2_inliers->points[i];
+      const PointT &pt1 = target_inliers->points[i], pt2 = source_inliers->points[i];
       pcd1eig.col(i) << pt1.x, pt1.y, pt1.z;
       pcd2eig.col(i) << pt2.x, pt2.y, pt2.z;
     }
@@ -126,7 +127,7 @@ FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
 
     std::vector<int> inlier_mask = solver->getInlierMaxClique();
     for (const auto& idx : inlier_mask) {
-      const auto &pt1 = map1_inliers->points[idx], &pt2 = map2_inliers->points[idx];
+      const auto &pt1 = target_inliers->points[idx], &pt2 = source_inliers->points[idx];
       result->inlier_points_1->push_back(pt1);
       result->inlier_points_2->push_back(pt2);
     }
@@ -163,8 +164,8 @@ FPFHTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   stats["mem_cpu"] = GetPeakRSS();
 
   // // Visualize features
-  // VisualizeKeypoints(map1_pcd, map1_kp_coords);
-  // VisualizeKeypoints(map2_pcd, map2_kp_coords);
+  // VisualizeKeypoints(target, target_kp_coords);
+  // VisualizeKeypoints(source, source_kp_coords);
 
   return result;
 }

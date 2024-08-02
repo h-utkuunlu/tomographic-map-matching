@@ -28,11 +28,11 @@ public:
 protected:
   FPFHBase();
   FPFHBase(const json& parameters);
-  void ExtractInlierKeypoints(const PointCloud::Ptr map1_pcd,
-                              const PointCloud::Ptr map2_pcd,
+  void ExtractInlierKeypoints(const PointCloud::Ptr source,
+                              const PointCloud::Ptr target,
                               const pcl::CorrespondencesPtr correspondences,
-                              PointCloud::Ptr map1_inliers,
-                              PointCloud::Ptr map2_inliers) const;
+                              PointCloud::Ptr source_inliers,
+                              PointCloud::Ptr target_inliers) const;
   void DetectAndDescribeKeypoints(const PointCloud::Ptr input,
                                   PointCloud::Ptr keypoints,
                                   FeatureCloud::Ptr features) const;

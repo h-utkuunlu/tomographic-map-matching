@@ -39,12 +39,12 @@ ORBTEASER::UpdateParameters(const json& input)
 }
 
 HypothesisPtr
-ORBTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
-                                  const PointCloud::Ptr map2_pcd,
+ORBTEASER::RegisterPointCloudMaps(const PointCloud::Ptr source,
+                                  const PointCloud::Ptr target,
                                   json& stats) const
 {
 
-  if (map1_pcd->size() == 0 or map2_pcd->size() == 0) {
+  if (target->size() == 0 or source->size() == 0) {
     spdlog::critical("Pointcloud(s) are empty. Aborting");
     return HypothesisPtr(new Hypothesis());
   }
@@ -55,39 +55,39 @@ ORBTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   indiv = std::chrono::steady_clock::now();
 
   // Calculate & store all possible binary images (determined by grid size)
-  std::vector<SlicePtr> map1_slice = ComputeSliceImages(map1_pcd),
-                        map2_slice = ComputeSliceImages(map2_pcd);
+  std::vector<SlicePtr> target_slice = ComputeSliceImages(target),
+                        source_slice = ComputeSliceImages(source);
 
   stats["t_image_generation"] = CalculateTimeSince(indiv);
-  stats["map1_num_slices"] = map1_slice.size();
-  stats["map2_num_slices"] = map2_slice.size();
+  stats["target_num_slices"] = target_slice.size();
+  stats["source_num_slices"] = source_slice.size();
   indiv = std::chrono::steady_clock::now();
 
   // Convert binary images to feature slices
-  ComputeSliceFeatures(map1_slice);
-  ComputeSliceFeatures(map2_slice);
+  ComputeSliceFeatures(target_slice);
+  ComputeSliceFeatures(source_slice);
 
   // Calculate number of features in each map
-  size_t map1_nfeat = 0, map2_nfeat = 0;
-  for (const auto& slice : map1_slice)
-    map1_nfeat += slice->kp.size();
-  for (const auto& slice : map2_slice)
-    map2_nfeat += slice->kp.size();
+  size_t target_nfeat = 0, source_nfeat = 0;
+  for (const auto& slice : target_slice)
+    target_nfeat += slice->kp.size();
+  for (const auto& slice : source_slice)
+    source_nfeat += slice->kp.size();
 
   stats["t_feature_extraction"] = CalculateTimeSince(indiv);
-  stats["map1_num_features"] = map1_nfeat;
-  stats["map2_num_features"] = map2_nfeat;
+  stats["target_num_features"] = target_nfeat;
+  stats["source_num_features"] = source_nfeat;
   indiv = std::chrono::steady_clock::now();
 
   HypothesisPtr result;
 
   if (teaser_3d_) {
     // Method 2: Compare features across all slices (in 3D)
-    result = RunTeaserWith3DMatches(map1_slice, map2_slice);
+    result = RunTeaserWith3DMatches(source_slice, target_slice);
   } else {
     // Method 1: Similar to correlations before, using TEASER
     std::vector<HypothesisPtr> correlation_results =
-      CorrelateSlices(map1_slice, map2_slice);
+      CorrelateSlices(source_slice, target_slice);
     result = correlation_results[0];
   }
   stats["t_pose_estimation"] = CalculateTimeSince(indiv);
@@ -116,44 +116,45 @@ ORBTEASER::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
 }
 
 std::vector<HypothesisPtr>
-ORBTEASER::CorrelateSlices(const std::vector<SlicePtr>& map1_features,
-                           const std::vector<SlicePtr>& map2_features) const
+ORBTEASER::CorrelateSlices(const std::vector<SlicePtr>& source_features,
+                           const std::vector<SlicePtr>& target_features) const
 {
   // Number of possibilities (unless restricted) for slice pairings is n1 + n2 -
   // 1 Starting from bottom slice of m2 and top slice of m1 only, all the way to
   // the other way around. Manipulate index ranges
-  size_t map1_index = 0, map2_index = map2_features.size() - 1;
-  const size_t map1_size = map1_features.size(), map2_size = map2_features.size();
+  size_t target_index = 0, source_index = source_features.size() - 1;
+  const size_t target_size = target_features.size(),
+               source_size = source_features.size();
 
   // Only consider overlaps of particular percentage
   const size_t minimum_overlap = static_cast<size_t>(
     std::round(minimum_z_overlap_percentage_ *
-               static_cast<double>(std::min(map1_size, map2_size))));
+               static_cast<double>(std::min(target_size, source_size))));
 
   std::vector<HypothesisPtr> correlated_results;
   size_t count = 0;
 
-  while (!(map1_index == map1_size && map2_index == 0)) {
+  while (!(target_index == target_size && source_index == 0)) {
     // Height is determined by whichever has the smaller number of slices after
     // the index remaining between the two
-    size_t height = std::min(map1_size - map1_index, map2_size - map2_index);
+    size_t height = std::min(target_size - target_index, source_size - source_index);
 
     if (height >= minimum_overlap) {
       HeightIndices indices{
-        map1_index, map1_index + height, map2_index, map2_index + height
+        target_index, target_index + height, source_index, source_index + height
       };
 
       HypothesisPtr hypothesis =
-        RegisterForGivenInterval(map1_features, map2_features, indices);
+        RegisterForGivenInterval(source_features, target_features, indices);
       correlated_results.push_back(hypothesis);
     }
 
     // Update indices
     count++;
-    if (map2_index != 0)
-      --map2_index;
+    if (source_index != 0)
+      --source_index;
     else
-      ++map1_index;
+      ++target_index;
   }
 
   // spdlog::info("Number of correlations num_correlation: {}", count);
@@ -167,8 +168,8 @@ ORBTEASER::CorrelateSlices(const std::vector<SlicePtr>& map1_features,
 }
 
 HypothesisPtr
-ORBTEASER::RegisterForGivenInterval(const std::vector<SlicePtr>& map1,
-                                    const std::vector<SlicePtr>& map2,
+ORBTEASER::RegisterForGivenInterval(const std::vector<SlicePtr>& source,
+                                    const std::vector<SlicePtr>& target,
                                     HeightIndices indices) const
 {
   if (indices.m2_max - indices.m2_min != indices.m1_max - indices.m1_min) {
@@ -180,64 +181,66 @@ ORBTEASER::RegisterForGivenInterval(const std::vector<SlicePtr>& map1,
     std::min(indices.m2_max - indices.m2_min, indices.m1_max - indices.m1_min);
 
   // Aggregate matching features from all slices in the given range
-  PointCloud::Ptr map1_points(new PointCloud()), map2_points(new PointCloud());
+  PointCloud::Ptr target_points(new PointCloud()), source_points(new PointCloud());
   std::vector<float> distances;
 
   for (size_t i = 0; i < window; ++i) {
     // Extract correct slice & assign the weak ptrs
     size_t m1_idx = indices.m1_min + i, m2_idx = indices.m2_min + i;
-    const Slice &slice1 = *map1[m1_idx], slice2 = *map2[m2_idx];
+    const Slice &target_slice = *target[m1_idx], source_slice = *source[m2_idx];
 
-    if (slice1.kp.size() < 2 || slice2.kp.size() < 2) {
+    if (target_slice.kp.size() < 2 || source_slice.kp.size() < 2) {
       spdlog::debug(
         "Not enough keypoints in slices: m1_idx: {} kp: {} m2_idx: {} kp: {}",
         m1_idx,
-        slice1.kp.size(),
+        target_slice.kp.size(),
         m2_idx,
-        slice2.kp.size());
+        source_slice.kp.size());
       continue;
     }
 
     // Extract matching keypoints
     MatchingResultPtr matched_keypoints;
     if (gms_matching_) {
-      matched_keypoints = MatchKeyPointsGMS(slice1, slice2);
+      matched_keypoints = MatchKeyPointsGMS(source_slice, target_slice);
     } else {
-      matched_keypoints = MatchKeyPoints(slice1, slice2);
+      matched_keypoints = MatchKeyPoints(source_slice, target_slice);
     }
 
     // Convert to image coordinates
     std::vector<cv::Point2f> points1img, points2img;
-    cv::KeyPoint::convert(matched_keypoints->map1_keypoints, points1img);
-    cv::KeyPoint::convert(matched_keypoints->map2_keypoints, points2img);
+    cv::KeyPoint::convert(matched_keypoints->target_keypoints, points1img);
+    cv::KeyPoint::convert(matched_keypoints->source_keypoints, points2img);
 
     // Convert to real coordinates (3D)
-    PointCloud::Ptr points1 = img2real(points1img, slice1.slice_bounds, slice1.height),
-                    points2 = img2real(points2img, slice2.slice_bounds, slice2.height);
+    PointCloud::Ptr points1 = img2real(
+                      points1img, target_slice.slice_bounds, target_slice.height),
+                    points2 = img2real(
+                      points2img, source_slice.slice_bounds, source_slice.height);
 
     // Append to collective cloud
-    *map1_points += *points1;
-    *map2_points += *points2;
+    *target_points += *points1;
+    *source_points += *points2;
     distances.insert(distances.end(),
                      matched_keypoints->distances.begin(),
                      matched_keypoints->distances.end());
   }
 
   // Teaser++ registration on top N matches
-  SelectTopNMatches(map1_points, map2_points, distances);
-  spdlog::debug("Number of correspondences: {}", map1_points->size());
+  SelectTopNMatches(source_points, target_points, distances);
+  spdlog::debug("Number of correspondences: {}", target_points->size());
 
-  if (map1_points->size() < 5) {
+  if (target_points->size() < 5) {
     spdlog::debug("Not enough correspondences");
     return HypothesisPtr(new Hypothesis());
   }
 
   std::shared_ptr<teaser::RobustRegistrationSolver> solver =
-    RegisterPointsWithTeaser(map1_points, map2_points);
+    RegisterPointsWithTeaser(target_points, source_points);
 
   // Construct solution
   HypothesisPtr result =
-    ConstructSolutionFromSolverState(solver, map1_points, map2_points);
+    ConstructSolutionFromSolverState(solver, source_points, target_points);
 
   return result;
 }
@@ -281,34 +284,35 @@ ORBTEASER::RegisterPointsWithTeaser(const PointCloud::Ptr pcd1,
 }
 
 HypothesisPtr
-ORBTEASER::RunTeaserWith3DMatches(const std::vector<SlicePtr>& map1_features,
-                                  const std::vector<SlicePtr>& map2_features) const
+ORBTEASER::RunTeaserWith3DMatches(const std::vector<SlicePtr>& source_features,
+                                  const std::vector<SlicePtr>& target_features) const
 {
   // Extract all matches, slice by slice, in parallel
-  PointCloud::Ptr map1_points(new PointCloud()), map2_points(new PointCloud());
+  PointCloud::Ptr target_points(new PointCloud()), source_points(new PointCloud());
   std::vector<float> distances;
 
 #pragma omp parallel for collapse(2) schedule(dynamic)
-  for (size_t j = 0; j < map2_features.size(); ++j) {
-    for (size_t i = 0; i < map1_features.size(); ++i) {
-      const Slice &slice_map1 = *map1_features[i], slice_map2 = *map2_features[j];
+  for (size_t j = 0; j < source_features.size(); ++j) {
+    for (size_t i = 0; i < target_features.size(); ++i) {
+      const Slice &slice_target = *target_features[i],
+                  slice_source = *source_features[j];
 
-      MatchingResultPtr matches = MatchKeyPoints(slice_map1, slice_map2);
+      MatchingResultPtr matches = MatchKeyPoints(slice_source, slice_target);
 
       std::vector<cv::Point2f> points1img, points2img;
-      cv::KeyPoint::convert(matches->map1_keypoints, points1img);
-      cv::KeyPoint::convert(matches->map2_keypoints, points2img);
+      cv::KeyPoint::convert(matches->target_keypoints, points1img);
+      cv::KeyPoint::convert(matches->source_keypoints, points2img);
 
       // Convert to real coordinates (3D)
       PointCloud::Ptr points1 = img2real(
-                        points1img, slice_map1.slice_bounds, slice_map1.height),
+                        points1img, slice_target.slice_bounds, slice_target.height),
                       points2 = img2real(
-                        points2img, slice_map2.slice_bounds, slice_map2.height);
+                        points2img, slice_source.slice_bounds, slice_source.height);
 
 #pragma omp critical
       {
-        *map1_points += *points1;
-        *map2_points += *points2;
+        *target_points += *points1;
+        *source_points += *points2;
         distances.insert(distances.end(),
                          std::make_move_iterator(matches->distances.begin()),
                          std::make_move_iterator(matches->distances.end()));
@@ -317,27 +321,27 @@ ORBTEASER::RunTeaserWith3DMatches(const std::vector<SlicePtr>& map1_features,
   }
 
   // Retain only the top N, if larger than the teaser_num_correspondences_max
-  SelectTopNMatches(map1_points, map2_points, distances);
-  spdlog::debug("Number of correspondences: {}", map1_points->size());
-  if (map1_points->size() < 5) {
+  SelectTopNMatches(source_points, target_points, distances);
+  spdlog::debug("Number of correspondences: {}", target_points->size());
+  if (target_points->size() < 5) {
     spdlog::debug("Not enough correspondences");
     return HypothesisPtr(new Hypothesis());
   }
 
   // Register
   std::shared_ptr<teaser::RobustRegistrationSolver> solver =
-    RegisterPointsWithTeaser(map1_points, map2_points);
+    RegisterPointsWithTeaser(target_points, source_points);
 
   // Process result from state
   HypothesisPtr result =
-    ConstructSolutionFromSolverState(solver, map1_points, map2_points);
+    ConstructSolutionFromSolverState(solver, source_points, target_points);
 
   return result;
 }
 
 void
-ORBTEASER::SelectTopNMatches(PointCloud::Ptr& map1_points,
-                             PointCloud::Ptr& map2_points,
+ORBTEASER::SelectTopNMatches(PointCloud::Ptr& source_points,
+                             PointCloud::Ptr& target_points,
                              const std::vector<float>& distances) const
 {
   // Return as is if there are less matches than maximum
@@ -354,21 +358,21 @@ ORBTEASER::SelectTopNMatches(PointCloud::Ptr& map1_points,
   });
 
   // Collate
-  PointCloud::Ptr map1_topN(new PointCloud()), map2_topN(new PointCloud());
+  PointCloud::Ptr target_topN(new PointCloud()), source_topN(new PointCloud());
   for (size_t i = 0; i < teaser_num_correspondences_max_; ++i) {
-    map1_topN->push_back(map1_points->points[indices[i]]);
-    map2_topN->push_back(map2_points->points[indices[i]]);
+    target_topN->push_back(target_points->points[indices[i]]);
+    source_topN->push_back(source_points->points[indices[i]]);
   }
 
-  map1_points = map1_topN;
-  map2_points = map2_topN;
+  target_points = target_topN;
+  source_points = source_topN;
 }
 
 HypothesisPtr
 ORBTEASER::ConstructSolutionFromSolverState(
   const std::shared_ptr<teaser::RobustRegistrationSolver>& solver,
-  const PointCloud::Ptr& map1_points,
-  const PointCloud::Ptr& map2_points) const
+  const PointCloud::Ptr& source_points,
+  const PointCloud::Ptr& target_points) const
 {
   HypothesisPtr result(new Hypothesis());
   result->inlier_points_1 = PointCloud::Ptr(new PointCloud());
@@ -376,7 +380,7 @@ ORBTEASER::ConstructSolutionFromSolverState(
 
   std::vector<int> inlier_mask = solver->getInlierMaxClique();
   for (const auto& idx : inlier_mask) {
-    const auto &pt1 = map1_points->points[idx], &pt2 = map2_points->points[idx];
+    const auto &pt1 = target_points->points[idx], &pt2 = source_points->points[idx];
     result->inlier_points_1->push_back(pt1);
     result->inlier_points_2->push_back(pt2);
   }

@@ -33,12 +33,12 @@ FPFHRANSAC::UpdateParameters(const json& input)
 }
 
 HypothesisPtr
-FPFHRANSAC::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
-                                   const PointCloud::Ptr map2_pcd,
+FPFHRANSAC::RegisterPointCloudMaps(const PointCloud::Ptr source,
+                                   const PointCloud::Ptr target,
                                    json& stats) const
 {
 
-  if (map1_pcd->size() == 0 or map2_pcd->size() == 0) {
+  if (target->size() == 0 or source->size() == 0) {
     spdlog::critical("Pointcloud(s) are empty. Aborting");
     return HypothesisPtr(new Hypothesis());
   }
@@ -49,15 +49,16 @@ FPFHRANSAC::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   indiv = std::chrono::steady_clock::now();
 
   // Compute keypoints and features
-  PointCloud::Ptr map1_keypoints(new PointCloud), map2_keypoints(new PointCloud);
-  FeatureCloud::Ptr map1_features(new FeatureCloud), map2_features(new FeatureCloud);
+  PointCloud::Ptr target_keypoints(new PointCloud), source_keypoints(new PointCloud);
+  FeatureCloud::Ptr target_features(new FeatureCloud),
+    source_features(new FeatureCloud);
 
-  DetectAndDescribeKeypoints(map1_pcd, map1_keypoints, map1_features);
-  DetectAndDescribeKeypoints(map2_pcd, map2_keypoints, map2_features);
+  DetectAndDescribeKeypoints(target, target_keypoints, target_features);
+  DetectAndDescribeKeypoints(source, source_keypoints, source_features);
 
   stats["t_feature_extraction"] = CalculateTimeSince(indiv);
-  stats["map1_num_features"] = map1_features->size();
-  stats["map2_num_features"] = map2_features->size();
+  stats["target_num_features"] = target_features->size();
+  stats["source_num_features"] = source_features->size();
 
   spdlog::debug("Feature extraction took {} s",
                 stats["t_feature_extraction"].template get<double>());
@@ -67,8 +68,8 @@ FPFHRANSAC::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   pcl::registration::CorrespondenceEstimation<FeatureT, FeatureT>
     correspondence_estimator;
   pcl::CorrespondencesPtr correspondences(new pcl::Correspondences);
-  correspondence_estimator.setInputSource(map2_features);
-  correspondence_estimator.setInputTarget(map1_features);
+  correspondence_estimator.setInputSource(source_features);
+  correspondence_estimator.setInputTarget(target_features);
   correspondence_estimator.determineCorrespondences(*correspondences);
   spdlog::debug("Matching complete");
 
@@ -85,8 +86,8 @@ FPFHRANSAC::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   rejector_ransac.setInlierThreshold(ransac_inlier_threshold_);
   rejector_ransac.setRefineModel(ransac_refine_model_);
 
-  rejector_ransac.setInputSource(map2_keypoints);
-  rejector_ransac.setInputTarget(map1_keypoints);
+  rejector_ransac.setInputSource(source_keypoints);
+  rejector_ransac.setInputTarget(target_keypoints);
   rejector_ransac.setInputCorrespondences(correspondences_one_to_one);
   rejector_ransac.getCorrespondences(*correspondences_inlier);
   Eigen::Matrix4f transform = rejector_ransac.getBestTransformation();
@@ -97,9 +98,12 @@ FPFHRANSAC::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
                 correspondences_inlier->size());
 
   // Extract inliers
-  PointCloud::Ptr map1_inliers(new PointCloud), map2_inliers(new PointCloud);
-  ExtractInlierKeypoints(
-    map1_keypoints, map2_keypoints, correspondences_inlier, map1_inliers, map2_inliers);
+  PointCloud::Ptr target_inliers(new PointCloud), source_inliers(new PointCloud);
+  ExtractInlierKeypoints(source_keypoints,
+                         target_keypoints,
+                         correspondences_inlier,
+                         source_inliers,
+                         target_inliers);
 
   // Construct result
   HypothesisPtr result(new Hypothesis);
@@ -115,8 +119,8 @@ FPFHRANSAC::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   result->pose =
     ConstructTransformFromParameters(result->x, result->y, result->z, result->theta);
 
-  result->inlier_points_1 = map1_inliers;
-  result->inlier_points_2 = map2_inliers;
+  result->inlier_points_1 = target_inliers;
+  result->inlier_points_2 = source_inliers;
 
   stats["t_total"] = CalculateTimeSince(total);
 
@@ -124,8 +128,8 @@ FPFHRANSAC::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   stats["mem_cpu"] = GetPeakRSS();
 
   // // Visualize features
-  // VisualizeKeypoints(map1_pcd, map1_kp_coords);
-  // VisualizeKeypoints(map2_pcd, map2_kp_coords);
+  // VisualizeKeypoints(target, target_kp_coords);
+  // VisualizeKeypoints(source, source_kp_coords);
 
   return result;
 }

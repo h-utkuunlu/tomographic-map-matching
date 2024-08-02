@@ -72,7 +72,7 @@ struct SliceTransform
     pose = Eigen::Matrix4d::Identity();
   }
 
-  std::shared_ptr<Slice> slice1, slice2;
+  std::shared_ptr<Slice> target_slice, source_slice;
   std::vector<std::pair<cv::Point2f, cv::Point2f>> inliers;
   double x, y, z, theta;
   Eigen::Matrix4d pose;
@@ -125,15 +125,15 @@ typedef std::shared_ptr<Hypothesis> HypothesisPtr;
 class MapMatcherBase
 {
 public:
-  virtual HypothesisPtr RegisterPointCloudMaps(const PointCloud::Ptr pcd1,
-                                               const PointCloud::Ptr pcd2,
+  virtual HypothesisPtr RegisterPointCloudMaps(const PointCloud::Ptr source,
+                                               const PointCloud::Ptr target,
                                                json& stats) const = 0;
   virtual std::string GetName() const = 0;
   virtual void UpdateParameters(const json& input);
   virtual void GetParameters(json& output) const;
 
-  void VisualizeHypothesis(const PointCloud::Ptr& map1_pcd,
-                           const PointCloud::Ptr& map2_pcd,
+  void VisualizeHypothesis(const PointCloud::Ptr& source,
+                           const PointCloud::Ptr& target,
                            const HypothesisPtr& result) const;
 
 protected:

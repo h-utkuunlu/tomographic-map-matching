@@ -32,12 +32,12 @@ Consensus::GetParameters(json& output) const
 }
 
 HypothesisPtr
-Consensus::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
-                                  const PointCloud::Ptr map2_pcd,
+Consensus::RegisterPointCloudMaps(const PointCloud::Ptr source,
+                                  const PointCloud::Ptr target,
                                   json& stats) const
 {
 
-  if (map1_pcd->size() == 0 or map2_pcd->size() == 0) {
+  if (target->size() == 0 or source->size() == 0) {
     spdlog::critical("Pointcloud(s) are empty. Aborting");
     return HypothesisPtr(new Hypothesis());
   }
@@ -48,35 +48,35 @@ Consensus::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
   indiv = std::chrono::steady_clock::now();
 
   // Calculate & store all possible binary images (determined by grid size)
-  std::vector<SlicePtr> map1_slice = ComputeSliceImages(map1_pcd),
-                        map2_slice = ComputeSliceImages(map2_pcd);
+  std::vector<SlicePtr> target_slice = ComputeSliceImages(target),
+                        source_slice = ComputeSliceImages(source);
 
   stats["t_image_generation"] = CalculateTimeSince(indiv);
-  stats["map1_num_slices"] = map1_slice.size();
-  stats["map2_num_slices"] = map2_slice.size();
+  stats["target_num_slices"] = target_slice.size();
+  stats["source_num_slices"] = source_slice.size();
 
-  // VisualizeImageSlices(map1_image);
-  // VisualizeImageSlices(map2_image);
+  // VisualizeImageSlices(target_image);
+  // VisualizeImageSlices(source_image);
   indiv = std::chrono::steady_clock::now();
 
   // Convert binary images to feature slices
-  ComputeSliceFeatures(map1_slice);
-  ComputeSliceFeatures(map2_slice);
+  ComputeSliceFeatures(target_slice);
+  ComputeSliceFeatures(source_slice);
 
   // Calculate number of features in each map
-  size_t map1_nfeat = 0, map2_nfeat = 0;
-  for (const auto& slice : map1_slice)
-    map1_nfeat += slice->kp.size();
-  for (const auto& slice : map2_slice)
-    map2_nfeat += slice->kp.size();
+  size_t target_nfeat = 0, source_nfeat = 0;
+  for (const auto& slice : target_slice)
+    target_nfeat += slice->kp.size();
+  for (const auto& slice : source_slice)
+    source_nfeat += slice->kp.size();
 
   stats["t_feature_extraction"] = CalculateTimeSince(indiv);
-  stats["map1_num_features"] = map1_nfeat;
-  stats["map2_num_features"] = map2_nfeat;
+  stats["target_num_features"] = target_nfeat;
+  stats["source_num_features"] = source_nfeat;
   indiv = std::chrono::steady_clock::now();
 
   std::vector<HypothesisPtr> slice_correlations =
-    CorrelateSlices(map1_slice, map2_slice);
+    CorrelateSlices(source_slice, target_slice);
 
   HypothesisPtr result = slice_correlations[0];
 
@@ -104,35 +104,36 @@ Consensus::RegisterPointCloudMaps(const PointCloud::Ptr map1_pcd,
 }
 
 std::vector<HypothesisPtr>
-Consensus::CorrelateSlices(const std::vector<SlicePtr>& map1_features,
-                           const std::vector<SlicePtr>& map2_features) const
+Consensus::CorrelateSlices(const std::vector<SlicePtr>& source_features,
+                           const std::vector<SlicePtr>& target_features) const
 {
   // Number of possibilities (unless restricted) for slice pairings is n1 + n2 -
   // 1 Starting from bottom slice of m2 and top slice of m1 only, all the way to
   // the other way around. Manipulate index ranges
-  size_t map1_index = 0, map2_index = map2_features.size() - 1;
-  const size_t map1_size = map1_features.size(), map2_size = map2_features.size();
+  size_t target_index = 0, source_index = source_features.size() - 1;
+  const size_t target_size = target_features.size(),
+               source_size = source_features.size();
 
   // Only consider overlaps of particular percentage
   const size_t minimum_overlap = static_cast<size_t>(
     std::round(minimum_z_overlap_percentage_ *
-               static_cast<double>(std::min(map1_size, map2_size))));
+               static_cast<double>(std::min(target_size, source_size))));
 
   std::vector<HypothesisPtr> correlated_results;
 
   size_t count = 0;
-  while (!(map1_index == map1_size && map2_index == 0)) {
+  while (!(target_index == target_size && source_index == 0)) {
     // Height is determined by whichever has the smaller number of slices after
     // the index remaining between the two
-    size_t height = std::min(map1_size - map1_index, map2_size - map2_index);
+    size_t height = std::min(target_size - target_index, source_size - source_index);
 
     if (height >= minimum_overlap) {
       HeightIndices indices{
-        map1_index, map1_index + height, map2_index, map2_index + height
+        target_index, target_index + height, source_index, source_index + height
       };
 
       std::vector<SliceTransformPtr> results,
-        results_interim = ComputeMapTf(map1_features, map2_features, indices);
+        results_interim = ComputeMapTf(source_features, target_features, indices);
 
       // Eliminate poses with zero inliers
       for (auto res : results_interim) {
@@ -146,10 +147,10 @@ Consensus::CorrelateSlices(const std::vector<SlicePtr>& map1_features,
 
     // Update indices
     ++count;
-    if (map2_index != 0)
-      --map2_index;
+    if (source_index != 0)
+      --source_index;
     else
-      ++map1_index;
+      ++target_index;
   }
   // spdlog::info("Num. correlations num_correlation: {}", count);
 
@@ -162,8 +163,8 @@ Consensus::CorrelateSlices(const std::vector<SlicePtr>& map1_features,
 }
 
 std::vector<SliceTransformPtr>
-Consensus::ComputeMapTf(const std::vector<SlicePtr>& map1,
-                        const std::vector<SlicePtr>& map2,
+Consensus::ComputeMapTf(const std::vector<SlicePtr>& source,
+                        const std::vector<SlicePtr>& target,
                         HeightIndices indices) const
 {
   if (indices.m2_max - indices.m2_min != indices.m1_max - indices.m1_min) {
@@ -182,31 +183,31 @@ Consensus::ComputeMapTf(const std::vector<SlicePtr>& map1,
 
     // Extract correct slice & assign the weak ptrs
     size_t m1_idx = indices.m1_min + i, m2_idx = indices.m2_min + i;
-    const Slice &slice1 = *map1[m1_idx], slice2 = *map2[m2_idx];
+    const Slice &target_slice = *target[m1_idx], source_slice = *source[m2_idx];
 
-    res[i]->slice1 = map1[m1_idx];
-    res[i]->slice2 = map2[m2_idx];
+    res[i]->target_slice = target[m1_idx];
+    res[i]->source_slice = source[m2_idx];
 
-    if (slice1.kp.size() < 2 || slice2.kp.size() < 2) {
+    if (target_slice.kp.size() < 2 || source_slice.kp.size() < 2) {
       spdlog::debug(
         "Not enough keypoints in slices: m1_idx: {} kp: {} m2_idx: {} kp: {}",
         m1_idx,
-        slice1.kp.size(),
+        target_slice.kp.size(),
         m2_idx,
-        slice2.kp.size());
+        source_slice.kp.size());
       continue;
     }
 
     // Extract matching keypoints
     MatchingResultPtr matched_keypoints;
     if (gms_matching_) {
-      matched_keypoints = MatchKeyPointsGMS(slice1, slice2);
+      matched_keypoints = MatchKeyPointsGMS(source_slice, target_slice);
     } else {
-      matched_keypoints = MatchKeyPoints(slice1, slice2);
+      matched_keypoints = MatchKeyPoints(source_slice, target_slice);
     }
 
-    std::vector<cv::KeyPoint> kp1match = matched_keypoints->map1_keypoints,
-                              kp2match = matched_keypoints->map2_keypoints;
+    std::vector<cv::KeyPoint> kp1match = matched_keypoints->target_keypoints,
+                              kp2match = matched_keypoints->source_keypoints;
 
     if (kp1match.size() <= 4) {
       spdlog::debug("Not enough matches. m1_idx: {} m2_idx: {} num_matches: {}",
@@ -222,8 +223,8 @@ Consensus::ComputeMapTf(const std::vector<SlicePtr>& map1,
     cv::KeyPoint::convert(kp2match, points2img);
 
     // Convert to real coordinates
-    std::vector<cv::Point2f> points1 = img2real(points1img, slice1.slice_bounds);
-    std::vector<cv::Point2f> points2 = img2real(points2img, slice2.slice_bounds);
+    std::vector<cv::Point2f> points1 = img2real(points1img, target_slice.slice_bounds);
+    std::vector<cv::Point2f> points2 = img2real(points2img, source_slice.slice_bounds);
 
     cv::Mat inliers;
 
@@ -281,7 +282,7 @@ Consensus::ComputeMapTf(const std::vector<SlicePtr>& map1,
 
     // Height difference between matching slices is sufficient and should be
     // consistent between different maps since the grid size is the same
-    double z = map1[m1_idx]->height - map2[m2_idx]->height;
+    double z = target[m1_idx]->height - source[m2_idx]->height;
 
     Eigen::Affine3d pose = Eigen::Affine3d::Identity();
     pose.translation() << x, y, z;

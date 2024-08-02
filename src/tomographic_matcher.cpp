@@ -221,8 +221,8 @@ TomographicMatcher::VisualizeHypothesisSlices(const HypothesisPtr hypothesis) co
     return;
   }
 
-  cv::namedWindow("slice1", cv::WINDOW_NORMAL);
-  cv::namedWindow("slice2", cv::WINDOW_NORMAL);
+  cv::namedWindow("target_slice", cv::WINDOW_NORMAL);
+  cv::namedWindow("source_slice", cv::WINDOW_NORMAL);
   // cv::namedWindow("combined", cv::WINDOW_NORMAL);
 
   // Interactive visualization
@@ -230,8 +230,8 @@ TomographicMatcher::VisualizeHypothesisSlices(const HypothesisPtr hypothesis) co
     spdlog::info("Pair {} / {}", current_idx + 1, num_inlier_slices);
 
     SliceTransformPtr& slice_pair = hypothesis->inlier_slices[current_idx];
-    VisualizeSlice(slice_pair->slice1, "slice1");
-    VisualizeSlice(slice_pair->slice2, "slice2");
+    VisualizeSlice(slice_pair->target_slice, "target_slice");
+    VisualizeSlice(slice_pair->source_slice, "source_slice");
 
     int key = cv::waitKey(0);
 
@@ -330,30 +330,31 @@ TomographicMatcher::ComputeSliceFeatures(std::vector<SlicePtr>& image_slices) co
 }
 
 MatchingResultPtr
-TomographicMatcher::MatchKeyPoints(const Slice& slice1, const Slice& slice2) const
+TomographicMatcher::MatchKeyPoints(const Slice& source_slice,
+                                   const Slice& target_slice) const
 {
   MatchingResultPtr result(new MatchingResult());
 
   // Skip if not descriptive
-  if (!(slice1.is_descriptive && slice2.is_descriptive))
+  if (!(target_slice.is_descriptive && source_slice.is_descriptive))
     return result;
 
   if (cross_match_) {
     // Cross-matching
     std::vector<cv::DMatch> matches;
-    slice2.matcher->match(slice1.desc, matches);
+    source_slice.matcher->match(target_slice.desc, matches);
 
     for (const auto& match : matches) {
-      result->map1_keypoints.push_back(slice1.kp[match.queryIdx]);
-      result->map2_keypoints.push_back(slice2.kp[match.trainIdx]);
+      result->target_keypoints.push_back(target_slice.kp[match.queryIdx]);
+      result->source_keypoints.push_back(source_slice.kp[match.trainIdx]);
       result->distances.push_back(match.distance);
     }
 
   } else {
     // 2-way match with ratio test
     std::vector<std::vector<cv::DMatch>> knnMatches12, knnMatches21;
-    slice2.matcher->knnMatch(slice1.desc, knnMatches12, 2);
-    slice1.matcher->knnMatch(slice2.desc, knnMatches21, 2);
+    source_slice.matcher->knnMatch(target_slice.desc, knnMatches12, 2);
+    target_slice.matcher->knnMatch(source_slice.desc, knnMatches21, 2);
 
     const float ratioThresh = 0.7f;
 
@@ -362,8 +363,10 @@ TomographicMatcher::MatchKeyPoints(const Slice& slice1, const Slice& slice2) con
         continue;
 
       if (knnMatches12[i][0].distance < ratioThresh * knnMatches12[i][1].distance) {
-        result->map1_keypoints.push_back(slice1.kp[knnMatches12[i][0].queryIdx]);
-        result->map2_keypoints.push_back(slice2.kp[knnMatches12[i][0].trainIdx]);
+        result->target_keypoints.push_back(
+          target_slice.kp[knnMatches12[i][0].queryIdx]);
+        result->source_keypoints.push_back(
+          source_slice.kp[knnMatches12[i][0].trainIdx]);
         result->distances.push_back(knnMatches12[i][0].distance);
       }
     }
@@ -373,8 +376,10 @@ TomographicMatcher::MatchKeyPoints(const Slice& slice1, const Slice& slice2) con
         continue;
 
       if (knnMatches21[i][0].distance < ratioThresh * knnMatches21[i][1].distance) {
-        result->map2_keypoints.push_back(slice2.kp[knnMatches21[i][0].queryIdx]);
-        result->map1_keypoints.push_back(slice1.kp[knnMatches21[i][0].trainIdx]);
+        result->source_keypoints.push_back(
+          source_slice.kp[knnMatches21[i][0].queryIdx]);
+        result->target_keypoints.push_back(
+          target_slice.kp[knnMatches21[i][0].trainIdx]);
         result->distances.push_back(knnMatches21[i][0].distance);
       }
     }
@@ -384,7 +389,8 @@ TomographicMatcher::MatchKeyPoints(const Slice& slice1, const Slice& slice2) con
 }
 
 MatchingResultPtr
-TomographicMatcher::MatchKeyPointsGMS(const Slice& slice1, const Slice& slice2) const
+TomographicMatcher::MatchKeyPointsGMS(const Slice& source_slice,
+                                      const Slice& target_slice) const
 {
   MatchingResultPtr result(new MatchingResult());
 
@@ -393,9 +399,9 @@ TomographicMatcher::MatchKeyPointsGMS(const Slice& slice1, const Slice& slice2) 
 
   // cv::Ptr<cv::DescriptorMatcher> matcher =
   //     cv::BFMatcher::create(cv::NORM_HAMMING, parameters_.cross_match);
-  // matcher->match(slice1.desc, slice2.desc, putative_matches);
+  // matcher->match(target_slice.desc, source_slice.desc, putative_matches);
 
-  slice2.matcher->match(slice1.desc, putative_matches);
+  source_slice.matcher->match(target_slice.desc, putative_matches);
 
   spdlog::debug("Num. putative matches: {}", putative_matches.size());
 
@@ -403,10 +409,10 @@ TomographicMatcher::MatchKeyPointsGMS(const Slice& slice1, const Slice& slice2) 
   std::vector<cv::DMatch> refined_matches;
 
   // With rotation, but without scale changes
-  cv::xfeatures2d::matchGMS(slice1.binary_image.size(),
-                            slice2.binary_image.size(),
-                            slice1.kp,
-                            slice2.kp,
+  cv::xfeatures2d::matchGMS(target_slice.binary_image.size(),
+                            source_slice.binary_image.size(),
+                            target_slice.kp,
+                            source_slice.kp,
                             putative_matches,
                             refined_matches,
                             true,
@@ -417,8 +423,8 @@ TomographicMatcher::MatchKeyPointsGMS(const Slice& slice1, const Slice& slice2) 
   std::vector<cv::KeyPoint> kp1match, kp2match;
 
   for (const auto& match : refined_matches) {
-    result->map1_keypoints.push_back(slice1.kp[match.queryIdx]);
-    result->map2_keypoints.push_back(slice2.kp[match.trainIdx]);
+    result->target_keypoints.push_back(target_slice.kp[match.queryIdx]);
+    result->source_keypoints.push_back(source_slice.kp[match.trainIdx]);
     result->distances.push_back(match.distance);
   }
 

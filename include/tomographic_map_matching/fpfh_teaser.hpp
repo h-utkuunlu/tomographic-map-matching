@@ -14,8 +14,8 @@ public:
   void UpdateParameters(const json& input) override;
   std::string GetName() const override { return "FPFH-TEASER"; }
 
-  HypothesisPtr RegisterPointCloudMaps(const PointCloud::Ptr pcd1,
-                                       const PointCloud::Ptr pcd2,
+  HypothesisPtr RegisterPointCloudMaps(const PointCloud::Ptr source,
+                                       const PointCloud::Ptr target,
                                        json& stats) const override;
 
 private:

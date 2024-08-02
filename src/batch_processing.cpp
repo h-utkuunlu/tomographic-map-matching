@@ -279,7 +279,7 @@ main(int argc, char** argv)
 
     // Calculate & print errors
     map_matcher::HypothesisPtr result =
-      matcher->RegisterPointCloudMaps(pcd1, pcd2, stats);
+      matcher->RegisterPointCloudMaps(pcd2, pcd1, stats);
 
     if (result->n_inliers == 0) {
       spdlog::error("Map matching unsuccessful");

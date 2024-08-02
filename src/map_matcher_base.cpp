@@ -134,8 +134,8 @@ MapMatcherBase::ConstructTransformFromParameters(double x,
 }
 
 void
-MapMatcherBase::VisualizeHypothesis(const PointCloud::Ptr& map1_pcd,
-                                    const PointCloud::Ptr& map2_pcd,
+MapMatcherBase::VisualizeHypothesis(const PointCloud::Ptr& source,
+                                    const PointCloud::Ptr& target,
                                     const HypothesisPtr& result) const
 {
   // 3 windows: Map 1, Map2, and merged maps
@@ -146,41 +146,41 @@ MapMatcherBase::VisualizeHypothesis(const PointCloud::Ptr& map1_pcd,
   viewer.createViewPort(0.0, 0.0, 1.0, 0.5, vp2);
 
   // Before merging
-  PointCloudColorGF map1_color(map1_pcd, "z"), map2_color(map2_pcd, "z");
-  viewer.addPointCloud(map1_pcd, map1_color, "map1", vp0);
-  viewer.addPointCloud(map2_pcd, map2_color, "map2", vp1);
+  PointCloudColorGF target_color(target, "z"), source_color(source, "z");
+  viewer.addPointCloud(target, target_color, "target", vp0);
+  viewer.addPointCloud(source, source_color, "source", vp1);
 
   // After merging
-  PointCloud::Ptr map2_transformed(new PointCloud);
-  pcl::transformPointCloud(*map2_pcd, *map2_transformed, result->pose);
+  PointCloud::Ptr source_transformed(new PointCloud);
+  pcl::transformPointCloud(*source, *source_transformed, result->pose);
 
-  PointCloudColor map1_merged_color(map1_pcd, 155, 0, 0),
-    map2_merged_color(map2_transformed, 0, 155, 0);
-  viewer.addPointCloud(map1_pcd, map1_merged_color, "map1_merged", vp2);
-  viewer.addPointCloud(map2_transformed, map2_merged_color, "map2_merged", vp2);
+  PointCloudColor target_merged_color(target, 155, 0, 0),
+    source_merged_color(source_transformed, 0, 155, 0);
+  viewer.addPointCloud(target, target_merged_color, "target_merged", vp2);
+  viewer.addPointCloud(source_transformed, source_merged_color, "source_merged", vp2);
 
   // Draw inliers if they are availabile
   if (result->inlier_points_1 != nullptr) {
-    PointCloud::Ptr map2_inliers_transformed(new PointCloud);
+    PointCloud::Ptr source_inliers_transformed(new PointCloud);
     pcl::transformPointCloud(
-      *(result->inlier_points_2), *map2_inliers_transformed, result->pose);
+      *(result->inlier_points_2), *source_inliers_transformed, result->pose);
 
-    PointCloudColor map1_inliers_color(result->inlier_points_1, 255, 0, 255),
-      map2_inliers_color(map2_inliers_transformed, 0, 255, 255);
+    PointCloudColor target_inliers_color(result->inlier_points_1, 255, 0, 255),
+      source_inliers_color(source_inliers_transformed, 0, 255, 255);
 
     viewer.addPointCloud(
-      result->inlier_points_1, map1_inliers_color, "map1_inliers", vp2);
+      result->inlier_points_1, target_inliers_color, "target_inliers", vp2);
     viewer.addPointCloud(
-      map2_inliers_transformed, map2_inliers_color, "map2_inliers", vp2);
+      source_inliers_transformed, source_inliers_color, "source_inliers", vp2);
     viewer.setPointCloudRenderingProperties(
-      pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "map1_inliers");
+      pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "target_inliers");
     viewer.setPointCloudRenderingProperties(
-      pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "map2_inliers");
+      pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "source_inliers");
 
     // Add lines between all correspondences
     for (size_t i = 0; i < result->inlier_points_1->size(); ++i) {
       const PointT &pt1 = result->inlier_points_1->points.at(i),
-                   &pt2 = map2_inliers_transformed->points.at(i);
+                   &pt2 = source_inliers_transformed->points.at(i);
       std::string line_name = "inlier_line_" + std::to_string(i + 1);
       viewer.addLine(pt1, pt2, 255, 255, 255, line_name, vp2);
     }
@@ -199,28 +199,28 @@ MapMatcherBase::ComputeResultSpread(const HypothesisPtr& result) const
 
     for (const SliceTransformPtr& tf_result : result->inlier_slices) {
       // Retrieve respective slice heights
-      double height_map1 = tf_result->slice1->height,
-             height_map2 = tf_result->slice2->height;
+      double height_target = tf_result->target_slice->height,
+             height_source = tf_result->source_slice->height;
 
       for (const std::pair<cv::Point2f, cv::Point2f>& inlier_pair :
            tf_result->inliers) {
         const auto &pt1 = inlier_pair.first, &pt2 = inlier_pair.second;
 
-        result->inlier_points_1->push_back(PointT(pt1.x, pt1.y, height_map1));
-        result->inlier_points_2->push_back(PointT(pt2.x, pt2.y, height_map2));
+        result->inlier_points_1->push_back(PointT(pt1.x, pt1.y, height_target));
+        result->inlier_points_2->push_back(PointT(pt2.x, pt2.y, height_source));
       }
     }
   }
 
   // Calculate spreads for each map
-  PointT spread_map1 = CalculateXYZSpread(result->inlier_points_1),
-         spread_map2 = CalculateXYZSpread(result->inlier_points_2);
+  PointT spread_target = CalculateXYZSpread(result->inlier_points_1),
+         spread_source = CalculateXYZSpread(result->inlier_points_2);
 
   // Return minimum instead of average. Should be a more conservative estimate
   // The spreads should actually be the same in z, and pretty close in x and y
-  return PointT(std::min(spread_map1.x, spread_map2.x),
-                std::min(spread_map1.y, spread_map2.y),
-                std::min(spread_map1.z, spread_map2.z));
+  return PointT(std::min(spread_target.x, spread_source.x),
+                std::min(spread_target.y, spread_source.y),
+                std::min(spread_target.z, spread_source.z));
 }
 
 HypothesisPtr

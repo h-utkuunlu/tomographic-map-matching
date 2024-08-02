@@ -8,12 +8,12 @@ struct MatchingResult
 {
   MatchingResult()
   {
-    map1_keypoints = std::vector<cv::KeyPoint>();
-    map2_keypoints = std::vector<cv::KeyPoint>();
+    target_keypoints = std::vector<cv::KeyPoint>();
+    source_keypoints = std::vector<cv::KeyPoint>();
     distances = std::vector<float>();
   }
 
-  std::vector<cv::KeyPoint> map1_keypoints, map2_keypoints;
+  std::vector<cv::KeyPoint> target_keypoints, source_keypoints;
   std::vector<float> distances;
 };
 typedef std::shared_ptr<MatchingResult> MatchingResultPtr;
@@ -42,8 +42,10 @@ protected:
                            double z_height) const;
   void VisualizeSlice(const SlicePtr slice, std::string window_name) const;
 
-  MatchingResultPtr MatchKeyPoints(const Slice& slice1, const Slice& slice2) const;
-  MatchingResultPtr MatchKeyPointsGMS(const Slice& slice1, const Slice& slice2) const;
+  MatchingResultPtr MatchKeyPoints(const Slice& source_slice,
+                                   const Slice& target_slice) const;
+  MatchingResultPtr MatchKeyPointsGMS(const Slice& source_slice,
+                                      const Slice& target_slice) const;
 
   bool cross_match_ = false;
   bool approximate_neighbors_ = false;

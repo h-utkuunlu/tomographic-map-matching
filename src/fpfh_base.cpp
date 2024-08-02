@@ -121,22 +121,20 @@ FPFHBase::DetectAndDescribeKeypoints(const PointCloud::Ptr input,
 }
 
 void
-FPFHBase::ExtractInlierKeypoints(const PointCloud::Ptr map1_pcd,
-                                 const PointCloud::Ptr map2_pcd,
+FPFHBase::ExtractInlierKeypoints(const PointCloud::Ptr source,
+                                 const PointCloud::Ptr target,
                                  const pcl::CorrespondencesPtr correspondences,
-                                 PointCloud::Ptr map1_inliers,
-                                 PointCloud::Ptr map2_inliers) const
+                                 PointCloud::Ptr source_inliers,
+                                 PointCloud::Ptr target_inliers) const
 {
 
-  // The assumption here is that the map1_pcd is the target (match), map2_pcd is
-  // the source (query)
   size_t N = correspondences->size();
-  map1_inliers->resize(N);
-  map2_inliers->resize(N);
+  target_inliers->resize(N);
+  source_inliers->resize(N);
 
   for (size_t i = 0; i < N; ++i) {
-    map2_inliers->at(i) = map2_pcd->points[correspondences->at(i).index_query];
-    map1_inliers->at(i) = map1_pcd->points[correspondences->at(i).index_match];
+    source_inliers->at(i) = source->points[correspondences->at(i).index_query];
+    target_inliers->at(i) = target->points[correspondences->at(i).index_match];
   }
 }
 
