@@ -48,8 +48,7 @@ TomographicMatcher::GetParameters(json& output) const
 }
 
 PointCloud::Ptr
-TomographicMatcher::ExtractSlice(const PointCloud::Ptr& pcd,
-                                 double height) const
+TomographicMatcher::ExtractSlice(const PointCloud::Ptr& pcd, double height) const
 {
   size_t N = pcd->size();
   double hmin = height - (slice_z_height_ / 2.0),
@@ -75,10 +74,8 @@ TomographicMatcher::ConvertPCDSliceToImage(const PointCloud::Ptr& pcd_slice,
 
   for (const auto& pt : *pcd_slice) {
     // Find coordinate of the point on the image
-    size_t xIdx =
-      std::round((pt.x - image_slice.slice_bounds.lower.x) / grid_size_);
-    size_t yIdx =
-      std::round((pt.y - image_slice.slice_bounds.lower.y) / grid_size_);
+    size_t xIdx = std::round((pt.x - image_slice.slice_bounds.lower.x) / grid_size_);
+    size_t yIdx = std::round((pt.y - image_slice.slice_bounds.lower.y) / grid_size_);
 
     // Flip y direction to match conventional image representation (y up, x
     // right)
@@ -97,8 +94,7 @@ TomographicMatcher::img2real(const std::vector<cv::Point2f>& pts,
                              const CartesianBounds& mapBounds) const
 {
   // Needed to flip direction of y
-  size_t yPix =
-    std::round((mapBounds.upper.y - mapBounds.lower.y) / grid_size_ + 1.0);
+  size_t yPix = std::round((mapBounds.upper.y - mapBounds.lower.y) / grid_size_ + 1.0);
 
   std::vector<cv::Point2f> converted(pts.size());
   size_t index = 0;
@@ -118,8 +114,7 @@ TomographicMatcher::img2real(const std::vector<cv::Point2f>& pts,
                              double z_height) const
 {
   // Needed to flip direction of y
-  size_t yPix =
-    std::round((mapBounds.upper.y - mapBounds.lower.y) / grid_size_ + 1.0);
+  size_t yPix = std::round((mapBounds.upper.y - mapBounds.lower.y) / grid_size_ + 1.0);
 
   PointCloud::Ptr converted(new PointCloud());
 
@@ -209,23 +204,20 @@ TomographicMatcher::ComputeSliceImages(const PointCloud::Ptr& map) const
   spdlog::debug("Start trim: {} End trim: {}", start, end);
 
   std::vector<SlicePtr> image_slices_trimmed;
-  image_slices_trimmed.insert(
-    image_slices_trimmed.end(),
-    std::make_move_iterator(image_slices.begin() + start),
-    std::make_move_iterator(image_slices.end() - end));
+  image_slices_trimmed.insert(image_slices_trimmed.end(),
+                              std::make_move_iterator(image_slices.begin() + start),
+                              std::make_move_iterator(image_slices.end() - end));
 
   return image_slices_trimmed;
 }
 
 void
-TomographicMatcher::VisualizeHypothesisSlices(
-  const HypothesisPtr hypothesis) const
+TomographicMatcher::VisualizeHypothesisSlices(const HypothesisPtr hypothesis) const
 {
   size_t num_inlier_slices = hypothesis->inlier_slices.size(), current_idx = 0;
 
   if (num_inlier_slices == 0) {
-    spdlog::warn(
-      "There are no inlier slices for the hypothesis. Cannot visualize");
+    spdlog::warn("There are no inlier slices for the hypothesis. Cannot visualize");
     return;
   }
 
@@ -265,8 +257,7 @@ TomographicMatcher::VisualizeHypothesisSlices(
 }
 
 void
-TomographicMatcher::VisualizeSlice(const SlicePtr slice,
-                                   std::string window_name) const
+TomographicMatcher::VisualizeSlice(const SlicePtr slice, std::string window_name) const
 {
   cv::Mat display_image;
 
@@ -278,8 +269,7 @@ TomographicMatcher::VisualizeSlice(const SlicePtr slice,
 }
 
 std::vector<SlicePtr>&
-TomographicMatcher::ComputeSliceFeatures(
-  std::vector<SlicePtr>& image_slices) const
+TomographicMatcher::ComputeSliceFeatures(std::vector<SlicePtr>& image_slices) const
 {
 #pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < image_slices.size(); ++i) {
@@ -323,11 +313,9 @@ TomographicMatcher::ComputeSliceFeatures(
             lsh_num_tables_, lsh_key_size_, lsh_multiprobe_level_)));
       } else {
         if (orb_wta_k_ == 2) {
-          image_slice.matcher =
-            cv::BFMatcher::create(cv::NORM_HAMMING, cross_match_);
+          image_slice.matcher = cv::BFMatcher::create(cv::NORM_HAMMING, cross_match_);
         } else if (orb_wta_k_ == 3 or orb_wta_k_ == 4) {
-          image_slice.matcher =
-            cv::BFMatcher::create(cv::NORM_HAMMING2, cross_match_);
+          image_slice.matcher = cv::BFMatcher::create(cv::NORM_HAMMING2, cross_match_);
         } else {
           spdlog::critical("ORB WTA_K cannot be anything other than 2, 3, or "
                            "4. Set value: {}",
@@ -342,8 +330,7 @@ TomographicMatcher::ComputeSliceFeatures(
 }
 
 MatchingResultPtr
-TomographicMatcher::MatchKeyPoints(const Slice& slice1,
-                                   const Slice& slice2) const
+TomographicMatcher::MatchKeyPoints(const Slice& slice1, const Slice& slice2) const
 {
   MatchingResultPtr result(new MatchingResult());
 
@@ -374,12 +361,9 @@ TomographicMatcher::MatchKeyPoints(const Slice& slice1,
       if (knnMatches12[i].size() != 2)
         continue;
 
-      if (knnMatches12[i][0].distance <
-          ratioThresh * knnMatches12[i][1].distance) {
-        result->map1_keypoints.push_back(
-          slice1.kp[knnMatches12[i][0].queryIdx]);
-        result->map2_keypoints.push_back(
-          slice2.kp[knnMatches12[i][0].trainIdx]);
+      if (knnMatches12[i][0].distance < ratioThresh * knnMatches12[i][1].distance) {
+        result->map1_keypoints.push_back(slice1.kp[knnMatches12[i][0].queryIdx]);
+        result->map2_keypoints.push_back(slice2.kp[knnMatches12[i][0].trainIdx]);
         result->distances.push_back(knnMatches12[i][0].distance);
       }
     }
@@ -388,12 +372,9 @@ TomographicMatcher::MatchKeyPoints(const Slice& slice1,
       if (knnMatches21[i].size() != 2)
         continue;
 
-      if (knnMatches21[i][0].distance <
-          ratioThresh * knnMatches21[i][1].distance) {
-        result->map2_keypoints.push_back(
-          slice2.kp[knnMatches21[i][0].queryIdx]);
-        result->map1_keypoints.push_back(
-          slice1.kp[knnMatches21[i][0].trainIdx]);
+      if (knnMatches21[i][0].distance < ratioThresh * knnMatches21[i][1].distance) {
+        result->map2_keypoints.push_back(slice2.kp[knnMatches21[i][0].queryIdx]);
+        result->map1_keypoints.push_back(slice1.kp[knnMatches21[i][0].trainIdx]);
         result->distances.push_back(knnMatches21[i][0].distance);
       }
     }
@@ -403,8 +384,7 @@ TomographicMatcher::MatchKeyPoints(const Slice& slice1,
 }
 
 MatchingResultPtr
-TomographicMatcher::MatchKeyPointsGMS(const Slice& slice1,
-                                      const Slice& slice2) const
+TomographicMatcher::MatchKeyPointsGMS(const Slice& slice1, const Slice& slice2) const
 {
   MatchingResultPtr result(new MatchingResult());
 

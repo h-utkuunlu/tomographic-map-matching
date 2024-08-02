@@ -30,6 +30,7 @@ add_library(${PROJECT_NAME} SHARED
   src/tomographic_matcher.cpp
   src/consensus.cpp
   src/orb_teaser.cpp
+  src/fpfh_base.cpp
   src/fpfh_ransac.cpp
   src/fpfh_teaser.cpp
 )

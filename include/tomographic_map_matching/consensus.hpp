@@ -23,8 +23,7 @@ private:
   std::vector<SliceTransformPtr> ComputeMapTf(const std::vector<SlicePtr>& map1,
                                               const std::vector<SlicePtr>& map2,
                                               HeightIndices indices) const;
-  HypothesisPtr VoteBetweenSlices(
-    const std::vector<SliceTransformPtr>& results) const;
+  HypothesisPtr VoteBetweenSlices(const std::vector<SliceTransformPtr>& results) const;
 
   double consensus_ransac_factor_ = 5.0;
   bool consensus_use_rigid_ = false;

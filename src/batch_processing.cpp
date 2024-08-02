@@ -14,12 +14,8 @@
 using json = map_matcher::json;
 
 // Flags
-DEFINE_string(parameter_config,
-              "",
-              "JSON file with parameters. Results are appended");
-DEFINE_string(data_config,
-              "",
-              "Scenario file that delineates pairs to be tested");
+DEFINE_string(parameter_config, "", "JSON file with parameters. Results are appended");
+DEFINE_string(data_config, "", "Scenario file that delineates pairs to be tested");
 DEFINE_string(results_dir,
               "",
               "Folder to save the results. Leave empty for not saving results");
@@ -92,8 +88,8 @@ ReadGTPose(std::string fname)
 double
 ComputeAngularError(Eigen::Matrix3d R_exp, Eigen::Matrix3d R_est)
 {
-  return std::abs(std::acos(
-    fmin(fmax(((R_exp.transpose() * R_est).trace() - 1) / 2, -1.0), 1.0)));
+  return std::abs(
+    std::acos(fmin(fmax(((R_exp.transpose() * R_est).trace() - 1) / 2, -1.0), 1.0)));
 }
 
 int
@@ -129,14 +125,12 @@ main(int argc, char** argv)
                      parameter_config_file_path.string());
     exit(-1);
   }
-  spdlog::info("Parameter config file path: {}",
-               parameter_config_file_path.string());
+  spdlog::info("Parameter config file path: {}", parameter_config_file_path.string());
 
   if (not(std::filesystem::exists(data_config_file_path) and
           data_config_file_path.extension().string() == ".json")) {
-    spdlog::critical(
-      "Data config file '{}' is either nonexistent or not a .JSON file",
-      data_config_file_path.string());
+    spdlog::critical("Data config file '{}' is either nonexistent or not a .JSON file",
+                     data_config_file_path.string());
     exit(-1);
   }
   spdlog::info("Data config file path: {}", data_config_file_path.string());
@@ -254,12 +248,12 @@ main(int argc, char** argv)
     stats["pcd2_size"] = pcd2->size();
 
     // Calculate ground truth poses
-    Eigen::Matrix4d pose1 = ReadGTPose(pcd1_path.string().substr(
-                                         0, pcd1_path.string().size() - 4) +
-                                       "-gtpose.txt"),
-                    pose2 = ReadGTPose(pcd2_path.string().substr(
-                                         0, pcd2_path.string().size() - 4) +
-                                       "-gtpose.txt");
+    Eigen::Matrix4d pose1 = ReadGTPose(
+                      pcd1_path.string().substr(0, pcd1_path.string().size() - 4) +
+                      "-gtpose.txt"),
+                    pose2 = ReadGTPose(
+                      pcd2_path.string().substr(0, pcd2_path.string().size() - 4) +
+                      "-gtpose.txt");
 
     // // TODO: Apply random roll-pitch if specified
     // map1_pcd = ApplyRandomRollPitch(map1_pcd, pose1);
@@ -302,23 +296,20 @@ main(int argc, char** argv)
                    result->theta);
 
       double error_position =
-        (target.topRightCorner(3, 1) - result->pose.topRightCorner(3, 1))
-          .norm();
-      double error_angle = ComputeAngularError(
-        target.topLeftCorner(3, 3), result->pose.topLeftCorner(3, 3));
+        (target.topRightCorner(3, 1) - result->pose.topRightCorner(3, 1)).norm();
+      double error_angle = ComputeAngularError(target.topLeftCorner(3, 3),
+                                               result->pose.topLeftCorner(3, 3));
 
       stats["error_position"] = error_position;
       stats["error_angle"] = error_angle;
       double total_time = stats["t_total"].template get<double>();
 
-      std::string log_output =
-        fmt::format("Error: {:.5f}m / {:.5f}rad. Took {:.5f}s",
-                    error_position,
-                    error_angle,
-                    total_time);
+      std::string log_output = fmt::format("Error: {:.5f}m / {:.5f}rad. Took {:.5f}s",
+                                           error_position,
+                                           error_angle,
+                                           total_time);
 
-      if (error_position >
-            5.0 * parameters_full["grid_size"].template get<double>() or
+      if (error_position > 5.0 * parameters_full["grid_size"].template get<double>() or
           error_angle > 0.1745)
         spdlog::warn("{}", log_output);
       else

@@ -16,8 +16,7 @@ using json = nlohmann::json;
 
 typedef pcl::PointXYZ PointT;
 typedef pcl::PointCloud<PointT> PointCloud;
-typedef pcl::visualization::PointCloudColorHandlerCustom<PointT>
-  PointCloudColor;
+typedef pcl::visualization::PointCloudColorHandlerCustom<PointT> PointCloudColor;
 typedef pcl::visualization::PointCloudColorHandlerGenericField<PointT>
   PointCloudColorGF;
 
@@ -153,8 +152,7 @@ protected:
   }
 
   size_t GetPeakRSS() const;
-  double CalculateTimeSince(
-    const std::chrono::steady_clock::time_point& start) const;
+  double CalculateTimeSince(const std::chrono::steady_clock::time_point& start) const;
   CartesianBounds CalculateBounds(const PointCloud::Ptr& pcd) const;
   PointT CalculateXYZSpread(const PointCloud::Ptr& pcd) const;
   double EstimateStdDev(const std::vector<double>& data) const;

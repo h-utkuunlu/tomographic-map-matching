@@ -19,8 +19,7 @@ Consensus::Consensus(const json& parameters)
 void
 Consensus::UpdateParameters(const json& input)
 {
-  UpdateSingleParameter(
-    input, "consensus_ransac_factor", consensus_ransac_factor_);
+  UpdateSingleParameter(input, "consensus_ransac_factor", consensus_ransac_factor_);
   UpdateSingleParameter(input, "consensus_use_rigid", consensus_use_rigid_);
 }
 
@@ -112,8 +111,7 @@ Consensus::CorrelateSlices(const std::vector<SlicePtr>& map1_features,
   // 1 Starting from bottom slice of m2 and top slice of m1 only, all the way to
   // the other way around. Manipulate index ranges
   size_t map1_index = 0, map2_index = map2_features.size() - 1;
-  const size_t map1_size = map1_features.size(),
-               map2_size = map2_features.size();
+  const size_t map1_size = map1_features.size(), map2_size = map2_features.size();
 
   // Only consider overlaps of particular percentage
   const size_t minimum_overlap = static_cast<size_t>(
@@ -157,10 +155,9 @@ Consensus::CorrelateSlices(const std::vector<SlicePtr>& map1_features,
 
   // Providing a lambda sorting function to deal with the use of smart
   // pointers. Otherwise sorted value is not exactly accurate
-  std::sort(
-    correlated_results.rbegin(),
-    correlated_results.rend(),
-    [](HypothesisPtr val1, HypothesisPtr val2) { return *val1 < *val2; });
+  std::sort(correlated_results.rbegin(),
+            correlated_results.rend(),
+            [](HypothesisPtr val1, HypothesisPtr val2) { return *val1 < *val2; });
   return correlated_results;
 }
 
@@ -225,10 +222,8 @@ Consensus::ComputeMapTf(const std::vector<SlicePtr>& map1,
     cv::KeyPoint::convert(kp2match, points2img);
 
     // Convert to real coordinates
-    std::vector<cv::Point2f> points1 =
-      img2real(points1img, slice1.slice_bounds);
-    std::vector<cv::Point2f> points2 =
-      img2real(points2img, slice2.slice_bounds);
+    std::vector<cv::Point2f> points1 = img2real(points1img, slice1.slice_bounds);
+    std::vector<cv::Point2f> points2 = img2real(points2img, slice2.slice_bounds);
 
     cv::Mat inliers;
 
@@ -268,15 +263,13 @@ Consensus::ComputeMapTf(const std::vector<SlicePtr>& map1,
          it != inliers.end<uchar>();
          ++it) {
       if (*it == 1) {
-        inliers_vec.push_back(
-          std::make_pair(points1[idx_count], points2[idx_count]));
+        inliers_vec.push_back(std::make_pair(points1[idx_count], points2[idx_count]));
       }
       ++idx_count;
     }
 
     if (inliers_vec.empty()) {
-      spdlog::debug(
-        "Not enough inliers. m1_idx: {} m2_idx: {}", m1_idx, m2_idx);
+      spdlog::debug("Not enough inliers. m1_idx: {} m2_idx: {}", m1_idx, m2_idx);
       continue;
     }
 
@@ -305,8 +298,7 @@ Consensus::ComputeMapTf(const std::vector<SlicePtr>& map1,
 }
 
 HypothesisPtr
-Consensus::VoteBetweenSlices(
-  const std::vector<SliceTransformPtr>& results) const
+Consensus::VoteBetweenSlices(const std::vector<SliceTransformPtr>& results) const
 {
   std::vector<HypothesisPtr> voted_results(results.size());
   double dist_thresh = grid_size_ * consensus_ransac_factor_,
@@ -329,8 +321,7 @@ Consensus::VoteBetweenSlices(
       double dx = results[i]->x - k->x, dy = results[i]->y - k->y,
              dist = dx * dx + dy * dy;
       if (dist < dist_thresh * dist_thresh &&
-          std::abs(std::cos(results[i]->theta) - std::cos(k->theta)) <
-            tThresh) {
+          std::abs(std::cos(results[i]->theta) - std::cos(k->theta)) < tThresh) {
         ++n_inliers;
         xAvg += k->x;
         yAvg += k->y;
@@ -361,10 +352,9 @@ Consensus::VoteBetweenSlices(
       ConstructTransformFromParameters(xAvg, yAvg, results[i]->z, tAvg);
   }
 
-  std::sort(
-    voted_results.rbegin(),
-    voted_results.rend(),
-    [](HypothesisPtr val1, HypothesisPtr val2) { return *val1 < *val2; });
+  std::sort(voted_results.rbegin(),
+            voted_results.rend(),
+            [](HypothesisPtr val1, HypothesisPtr val2) { return *val1 < *val2; });
   return voted_results[0];
 }
 

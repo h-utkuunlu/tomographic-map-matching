@@ -34,8 +34,7 @@ protected:
   std::vector<SlicePtr> ComputeSliceImages(const PointCloud::Ptr& map) const;
   std::vector<SlicePtr>& ComputeSliceFeatures(
     std::vector<SlicePtr>& image_slices) const;
-  void ConvertPCDSliceToImage(const PointCloud::Ptr& pcd_slice,
-                              Slice& slice) const;
+  void ConvertPCDSliceToImage(const PointCloud::Ptr& pcd_slice, Slice& slice) const;
   std::vector<cv::Point2f> img2real(const std::vector<cv::Point2f>& pts,
                                     const CartesianBounds& mapBounds) const;
   PointCloud::Ptr img2real(const std::vector<cv::Point2f>& pts,
@@ -43,10 +42,8 @@ protected:
                            double z_height) const;
   void VisualizeSlice(const SlicePtr slice, std::string window_name) const;
 
-  MatchingResultPtr MatchKeyPoints(const Slice& slice1,
-                                   const Slice& slice2) const;
-  MatchingResultPtr MatchKeyPointsGMS(const Slice& slice1,
-                                      const Slice& slice2) const;
+  MatchingResultPtr MatchKeyPoints(const Slice& slice1, const Slice& slice2) const;
+  MatchingResultPtr MatchKeyPointsGMS(const Slice& slice1, const Slice& slice2) const;
 
   bool cross_match_ = false;
   bool approximate_neighbors_ = false;

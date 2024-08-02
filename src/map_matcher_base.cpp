@@ -193,8 +193,7 @@ PointT
 MapMatcherBase::ComputeResultSpread(const HypothesisPtr& result) const
 {
   // Construct inliers pcds if they do not exist
-  if (result->inlier_points_1 == nullptr ||
-      result->inlier_points_2 == nullptr) {
+  if (result->inlier_points_1 == nullptr || result->inlier_points_2 == nullptr) {
     result->inlier_points_1 = PointCloud::Ptr(new PointCloud());
     result->inlier_points_2 = PointCloud::Ptr(new PointCloud());
 

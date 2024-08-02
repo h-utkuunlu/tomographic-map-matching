@@ -123,8 +123,7 @@ ORBTEASER::CorrelateSlices(const std::vector<SlicePtr>& map1_features,
   // 1 Starting from bottom slice of m2 and top slice of m1 only, all the way to
   // the other way around. Manipulate index ranges
   size_t map1_index = 0, map2_index = map2_features.size() - 1;
-  const size_t map1_size = map1_features.size(),
-               map2_size = map2_features.size();
+  const size_t map1_size = map1_features.size(), map2_size = map2_features.size();
 
   // Only consider overlaps of particular percentage
   const size_t minimum_overlap = static_cast<size_t>(
@@ -161,10 +160,9 @@ ORBTEASER::CorrelateSlices(const std::vector<SlicePtr>& map1_features,
 
   // Providing a lambda sorting function to deal with the use of smart
   // pointers. Otherwise sorted value is not exactly accurate
-  std::sort(
-    correlated_results.rbegin(),
-    correlated_results.rend(),
-    [](HypothesisPtr val1, HypothesisPtr val2) { return *val1 < *val2; });
+  std::sort(correlated_results.rbegin(),
+            correlated_results.rend(),
+            [](HypothesisPtr val1, HypothesisPtr val2) { return *val1 < *val2; });
   return correlated_results;
 }
 
@@ -214,10 +212,8 @@ ORBTEASER::RegisterForGivenInterval(const std::vector<SlicePtr>& map1,
     cv::KeyPoint::convert(matched_keypoints->map2_keypoints, points2img);
 
     // Convert to real coordinates (3D)
-    PointCloud::Ptr points1 =
-                      img2real(points1img, slice1.slice_bounds, slice1.height),
-                    points2 =
-                      img2real(points2img, slice2.slice_bounds, slice2.height);
+    PointCloud::Ptr points1 = img2real(points1img, slice1.slice_bounds, slice1.height),
+                    points2 = img2real(points2img, slice2.slice_bounds, slice2.height);
 
     // Append to collective cloud
     *map1_points += *points1;
@@ -285,9 +281,8 @@ ORBTEASER::RegisterPointsWithTeaser(const PointCloud::Ptr pcd1,
 }
 
 HypothesisPtr
-ORBTEASER::RunTeaserWith3DMatches(
-  const std::vector<SlicePtr>& map1_features,
-  const std::vector<SlicePtr>& map2_features) const
+ORBTEASER::RunTeaserWith3DMatches(const std::vector<SlicePtr>& map1_features,
+                                  const std::vector<SlicePtr>& map2_features) const
 {
   // Extract all matches, slice by slice, in parallel
   PointCloud::Ptr map1_points(new PointCloud()), map2_points(new PointCloud());
@@ -296,8 +291,7 @@ ORBTEASER::RunTeaserWith3DMatches(
 #pragma omp parallel for collapse(2) schedule(dynamic)
   for (size_t j = 0; j < map2_features.size(); ++j) {
     for (size_t i = 0; i < map1_features.size(); ++i) {
-      const Slice &slice_map1 = *map1_features[i],
-                  slice_map2 = *map2_features[j];
+      const Slice &slice_map1 = *map1_features[i], slice_map2 = *map2_features[j];
 
       MatchingResultPtr matches = MatchKeyPoints(slice_map1, slice_map2);
 
@@ -355,10 +349,9 @@ ORBTEASER::SelectTopNMatches(PointCloud::Ptr& map1_points,
   std::iota(indices.begin(), indices.end(), 0);
 
   // Shortest distance (best match) at the front
-  std::stable_sort(
-    indices.begin(), indices.end(), [&distances](size_t i1, size_t i2) {
-      return distances[i1] < distances[i2];
-    });
+  std::stable_sort(indices.begin(), indices.end(), [&distances](size_t i1, size_t i2) {
+    return distances[i1] < distances[i2];
+  });
 
   // Collate
   PointCloud::Ptr map1_topN(new PointCloud()), map2_topN(new PointCloud());
