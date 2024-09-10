@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(tomographic_map_matching CXX)
+project(tomographic_map_matching)
 
 set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -22,7 +22,6 @@ find_package(teaserpp REQUIRED)
 find_package(gflags REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(spdlog REQUIRED)
-find_package(fmt REQUIRED)  # spdlog depends on fmt, but still
 
 # Library
 add_library(${PROJECT_NAME} SHARED
@@ -33,6 +32,7 @@ add_library(${PROJECT_NAME} SHARED
   src/fpfh_base.cpp
   src/fpfh_ransac.cpp
   src/fpfh_teaser.cpp
+  src/estimate_rigid_2d.cpp
 )
 target_link_libraries(${PROJECT_NAME}
   ${PCL_LIBRARIES}

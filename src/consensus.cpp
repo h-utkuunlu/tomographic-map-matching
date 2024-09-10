@@ -2,6 +2,7 @@
 #include <opencv2/core/types.hpp>
 #include <pcl/common/transforms.h>
 #include <tomographic_map_matching/consensus.hpp>
+#include <tomographic_map_matching/estimate_rigid_2d.hpp>
 
 namespace map_matcher {
 
@@ -233,14 +234,14 @@ Consensus::ComputeMapTf(const std::vector<SlicePtr>& source,
 
     cv::Mat tf;
     if (consensus_use_rigid_)
-      tf = cv::estimateRigid2D(points2,
-                               points1,
-                               inliers,
-                               cv::RANSAC,
-                               ransacReprojThresh,
-                               maxIters,
-                               confidence,
-                               refineIters);
+      tf = estimateRigid2D(points2,
+                           points1,
+                           inliers,
+                           cv::RANSAC,
+                           ransacReprojThresh,
+                           maxIters,
+                           confidence,
+                           refineIters);
     else
       tf = cv::estimateAffinePartial2D(points2,
                                        points1,
