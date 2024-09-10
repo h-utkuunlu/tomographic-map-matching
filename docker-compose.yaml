@@ -8,8 +8,7 @@ services:
     volumes:
       - /dev/dri:/dev/dri
       - /etc/localtime:/etc/localtime:ro
-      - ./:/home/user/tomographic-map-matching
-      - $DATA_DIR:/data:ro
+      - ./:/home/ubuntu/ros_ws/src/tomographic-map-matching
     deploy:
       resources:
         reservations:
