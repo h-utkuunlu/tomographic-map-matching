@@ -199,13 +199,7 @@ Consensus::ComputeMapTf(const std::vector<SlicePtr>& source,
     }
 
     // Extract matching keypoints
-    MatchingResultPtr matched_keypoints;
-    if (gms_matching_) {
-      matched_keypoints = MatchKeyPointsGMS(source_slice, target_slice);
-    } else {
-      matched_keypoints = MatchKeyPoints(source_slice, target_slice);
-    }
-
+    MatchingResultPtr matched_keypoints = MatchKeyPoints(source_slice, target_slice);
     std::vector<cv::KeyPoint> kp1match = matched_keypoints->target_keypoints,
                               kp2match = matched_keypoints->source_keypoints;
 

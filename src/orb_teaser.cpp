@@ -200,12 +200,7 @@ ORBTEASER::RegisterForGivenInterval(const std::vector<SlicePtr>& source,
     }
 
     // Extract matching keypoints
-    MatchingResultPtr matched_keypoints;
-    if (gms_matching_) {
-      matched_keypoints = MatchKeyPointsGMS(source_slice, target_slice);
-    } else {
-      matched_keypoints = MatchKeyPoints(source_slice, target_slice);
-    }
+    MatchingResultPtr matched_keypoints = MatchKeyPoints(source_slice, target_slice);
 
     // Convert to image coordinates
     std::vector<cv::Point2f> points1img, points2img;

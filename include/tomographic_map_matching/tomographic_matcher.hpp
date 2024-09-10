@@ -44,8 +44,6 @@ protected:
 
   MatchingResultPtr MatchKeyPoints(const Slice& source_slice,
                                    const Slice& target_slice) const;
-  MatchingResultPtr MatchKeyPointsGMS(const Slice& source_slice,
-                                      const Slice& target_slice) const;
 
   bool cross_match_ = false;
   bool approximate_neighbors_ = false;
@@ -65,8 +63,5 @@ protected:
   int orb_wta_k_ = 2;
   int orb_patch_size_ = 31;
   int orb_fast_threshold_ = 20;
-
-  bool gms_matching_ = false;
-  double gms_threshold_factor_ = 0.5;
 };
 } // namespace map_matcher

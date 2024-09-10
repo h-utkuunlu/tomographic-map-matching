@@ -1,4 +1,3 @@
-#include <opencv2/xfeatures2d.hpp>
 #include <tomographic_map_matching/tomographic_matcher.hpp>
 
 namespace map_matcher {
@@ -26,8 +25,6 @@ TomographicMatcher::UpdateParameters(const json& input)
   UpdateSingleParameter(input, "orb_wta_k", orb_wta_k_);
   UpdateSingleParameter(input, "orb_patch_size", orb_patch_size_);
   UpdateSingleParameter(input, "orb_fast_threshold", orb_fast_threshold_);
-  UpdateSingleParameter(input, "gms_matching", gms_matching_);
-  UpdateSingleParameter(input, "gms_threshold_factor", gms_threshold_factor_);
 }
 
 void
@@ -43,8 +40,6 @@ TomographicMatcher::GetParameters(json& output) const
   output["orb_wta_k"] = orb_wta_k_;
   output["orb_patch_size"] = orb_patch_size_;
   output["orb_fast_threshold"] = orb_fast_threshold_;
-  output["gms_matching"] = gms_matching_;
-  output["gms_threshold_factor"] = gms_threshold_factor_;
 }
 
 PointCloud::Ptr
@@ -383,49 +378,6 @@ TomographicMatcher::MatchKeyPoints(const Slice& source_slice,
         result->distances.push_back(knnMatches21[i][0].distance);
       }
     }
-  }
-
-  return result;
-}
-
-MatchingResultPtr
-TomographicMatcher::MatchKeyPointsGMS(const Slice& source_slice,
-                                      const Slice& target_slice) const
-{
-  MatchingResultPtr result(new MatchingResult());
-
-  // Extract initial matches for GMS
-  std::vector<cv::DMatch> putative_matches;
-
-  // cv::Ptr<cv::DescriptorMatcher> matcher =
-  //     cv::BFMatcher::create(cv::NORM_HAMMING, parameters_.cross_match);
-  // matcher->match(target_slice.desc, source_slice.desc, putative_matches);
-
-  source_slice.matcher->match(target_slice.desc, putative_matches);
-
-  spdlog::debug("Num. putative matches: {}", putative_matches.size());
-
-  // Refine matches with GMS
-  std::vector<cv::DMatch> refined_matches;
-
-  // With rotation, but without scale changes
-  cv::xfeatures2d::matchGMS(target_slice.binary_image.size(),
-                            source_slice.binary_image.size(),
-                            target_slice.kp,
-                            source_slice.kp,
-                            putative_matches,
-                            refined_matches,
-                            true,
-                            false,
-                            gms_threshold_factor_);
-  spdlog::debug("Num. refined matches: {}", refined_matches.size());
-
-  std::vector<cv::KeyPoint> kp1match, kp2match;
-
-  for (const auto& match : refined_matches) {
-    result->target_keypoints.push_back(target_slice.kp[match.queryIdx]);
-    result->source_keypoints.push_back(source_slice.kp[match.trainIdx]);
-    result->distances.push_back(match.distance);
   }
 
   return result;
