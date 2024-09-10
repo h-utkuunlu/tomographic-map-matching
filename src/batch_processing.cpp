@@ -332,7 +332,7 @@ main(int argc, char** argv)
 
     // Visualization
     if (FLAGS_visualize) {
-      matcher->VisualizeHypothesis(pcd1, pcd2, result);
+      matcher->VisualizeHypothesis(pcd2, pcd1, result);
     }
   }
 
