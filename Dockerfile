@@ -21,6 +21,7 @@ RUN DEBIAN_FRONTEND=noninteractive sudo apt-get install -y --no-install-recommen
     mesa-utils \
     nano \
     zsh \
+    tmux \
     && sudo apt-get clean
 
 # PCL development files

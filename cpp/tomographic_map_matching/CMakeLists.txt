@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(tomographic_map_matching)
 
-set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
 endif()
@@ -15,6 +13,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+option(BUILD_APP "Build batch processing executable" OFF)
+
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -24,7 +24,7 @@ find_package(nlohmann_json REQUIRED)
 find_package(spdlog REQUIRED)
 
 # Library
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME} STATIC
   src/map_matcher_base.cpp
   src/tomographic_matcher.cpp
   src/consensus.cpp
@@ -42,14 +42,16 @@ target_link_libraries(${PROJECT_NAME}
   teaserpp::teaser_registration
   nlohmann_json::nlohmann_json
 )
-target_include_directories(${PROJECT_NAME} PRIVATE include)
+target_include_directories(${PROJECT_NAME} PUBLIC include)
 
 # App
-add_executable(${PROJECT_NAME}_app src/batch_processing.cpp)
-target_link_libraries(${PROJECT_NAME}_app
-  ${PROJECT_NAME}
-  spdlog::spdlog
-  gflags
-  fmt::fmt
-)
-target_include_directories(${PROJECT_NAME}_app PRIVATE include)
+if(BUILD_APP)
+  add_executable(${PROJECT_NAME}_app src/batch_processing.cpp)
+  target_link_libraries(${PROJECT_NAME}_app
+    ${PROJECT_NAME}
+    spdlog::spdlog
+    gflags
+    fmt::fmt
+  )
+  target_include_directories(${PROJECT_NAME}_app PRIVATE include)
+endif()
