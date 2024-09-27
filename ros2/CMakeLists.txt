@@ -5,6 +5,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(BUILD_APP OFF CACHE INTERNAL "Build batch processing executable")
 add_subdirectory(
   ${CMAKE_CURRENT_SOURCE_DIR}/../cpp/tomographic_map_matching/
   ${CMAKE_CURRENT_BINARY_DIR}/tomographic_map_matching)
