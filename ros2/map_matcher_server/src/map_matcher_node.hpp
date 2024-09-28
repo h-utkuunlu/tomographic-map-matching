@@ -3,7 +3,7 @@
 #include "tomographic_map_matching/consensus.hpp"
 #include <rclcpp/rclcpp.hpp>
 
-namespace tomographic_map_matcher_node {
+namespace map_matcher_node {
 
 class MatcherNode : public rclcpp::Node
 {

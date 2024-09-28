@@ -1,0 +1,4 @@
+float64 height
+bool is_descriptive
+map_matcher_interfaces/CartesianBounds slice_bounds
+sensor_msgs/PointCloud2 keypoints_with_descriptors
