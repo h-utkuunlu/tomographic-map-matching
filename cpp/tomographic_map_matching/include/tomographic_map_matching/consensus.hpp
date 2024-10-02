@@ -11,15 +11,15 @@ public:
   Consensus(const json& parameters);
   void UpdateParameters(const json& input) override;
   void GetParameters(json& output) const override;
+  std::vector<HypothesisPtr> CorrelateSlices(
+    const std::vector<SlicePtr>& source_features,
+    const std::vector<SlicePtr>& target_features) const;
   HypothesisPtr RegisterPointCloudMaps(const PointCloud::Ptr source,
                                        const PointCloud::Ptr target,
                                        json& stats) const override;
   std::string GetName() const override { return "Consensus"; }
 
 private:
-  std::vector<HypothesisPtr> CorrelateSlices(
-    const std::vector<SlicePtr>& source_features,
-    const std::vector<SlicePtr>& target_features) const;
   std::vector<SliceTransformPtr> ComputeMapTf(const std::vector<SlicePtr>& source,
                                               const std::vector<SlicePtr>& target,
                                               HeightIndices indices) const;

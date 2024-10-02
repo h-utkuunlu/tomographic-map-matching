@@ -25,22 +25,22 @@ public:
   void VisualizeHypothesisSlices(const HypothesisPtr hypothesis) const;
   virtual void UpdateParameters(const json& input) override;
   virtual void GetParameters(json& output) const override;
+  void VisualizeSlice(const SlicePtr slice, std::string window_name) const;
+  std::vector<SlicePtr> ComputeSliceImages(const PointCloud::Ptr& map) const;
+  std::vector<SlicePtr>& ComputeSliceFeatures(
+    std::vector<SlicePtr>& image_slices) const;
 
 protected:
   TomographicMatcher();
   TomographicMatcher(const json parameters);
 
   PointCloud::Ptr ExtractSlice(const PointCloud::Ptr& pcd, double height) const;
-  std::vector<SlicePtr> ComputeSliceImages(const PointCloud::Ptr& map) const;
-  std::vector<SlicePtr>& ComputeSliceFeatures(
-    std::vector<SlicePtr>& image_slices) const;
   void ConvertPCDSliceToImage(const PointCloud::Ptr& pcd_slice, Slice& slice) const;
   std::vector<cv::Point2f> img2real(const std::vector<cv::Point2f>& pts,
                                     const CartesianBounds& mapBounds) const;
   PointCloud::Ptr img2real(const std::vector<cv::Point2f>& pts,
                            const CartesianBounds& mapBounds,
                            double z_height) const;
-  void VisualizeSlice(const SlicePtr slice, std::string window_name) const;
 
   MatchingResultPtr MatchKeyPoints(const Slice& source_slice,
                                    const Slice& target_slice) const;

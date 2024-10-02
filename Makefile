@@ -1,6 +1,6 @@
-.PHONY: build
+.PHONY: cpp
 cpp:
-	cmake -DCMAKE_BUILD_TYPE=Release -Bbuild cpp/consensus/
+	cmake -DCMAKE_BUILD_TYPE=Release -Bbuild cpp/tomographic_map_matching/
 	cmake --build build -j$(nproc --all)
 
 .PHONY: demo
