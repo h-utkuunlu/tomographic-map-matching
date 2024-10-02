@@ -15,7 +15,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CartesianBounds.msg"
   "msg/Slice.msg"
   "msg/SliceMap.msg"
+  "srv/TriggerMatching.srv"
+  "action/MatchMaps.action"
   DEPENDENCIES std_msgs geometry_msgs sensor_msgs
 )
+
+ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()

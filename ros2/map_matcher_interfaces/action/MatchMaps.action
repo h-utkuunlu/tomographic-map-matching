@@ -1,0 +1,5 @@
+map_matcher_interfaces/SliceMap map
+---
+geometry_msgs/TransformStamped relative_pose
+---
+uint8 status
