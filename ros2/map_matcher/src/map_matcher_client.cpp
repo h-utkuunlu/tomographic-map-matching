@@ -3,7 +3,6 @@
 #include <thread>
 
 #include "conversions.hpp"
-#include "tomographic_map_matching/consensus.hpp"
 #include <map_matcher_interfaces/action/match_maps.hpp>
 #include <map_matcher_interfaces/srv/trigger_matching.hpp>
 #include <pcl/io/pcd_io.h>

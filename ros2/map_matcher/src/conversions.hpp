@@ -1,7 +1,5 @@
 #pragma once
 
-#define PCL_NO_PRECOMPILE
-
 #include "tomographic_map_matching/consensus.hpp"
 #include <cv_bridge/cv_bridge.hpp>
 #include <map_matcher_interfaces/msg/slice_map.hpp>
@@ -13,7 +11,6 @@ void
 ConvertToROS(const std::vector<map_matcher::SlicePtr>& in,
              map_matcher_interfaces::msg::SliceMap& out)
 {
-
   out.sliced_map.resize(in.size());
   for (size_t i = 0; i < in.size(); ++i) {
     auto& out_slice = out.sliced_map[i];

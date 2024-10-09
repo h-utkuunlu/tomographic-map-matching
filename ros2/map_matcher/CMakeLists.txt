@@ -61,7 +61,6 @@ rclcpp_components_register_node(
   EXECUTABLE map_matcher_client
 )
 
-
 install(
   TARGETS ${CMAKE_PROJECT_NAME}_server_component ${CMAKE_PROJECT_NAME}_client_component
   LIBRARY DESTINATION lib
