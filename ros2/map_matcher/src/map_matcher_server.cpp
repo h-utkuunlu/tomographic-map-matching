@@ -4,7 +4,6 @@
 
 #include "tomographic_map_matching/consensus.hpp"
 #include <map_matcher_interfaces/action/match_maps.hpp>
-#include <map_matcher_interfaces/msg/slice_map.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 
@@ -23,7 +22,7 @@ public:
 
     this->server_ptr_ = rclcpp_action::create_server<MatchMaps>(
       this,
-      "matcher_action",
+      "map_matching_action",
       std::bind(&MatcherServer::handle_goal, this, _1, _2),
       std::bind(&MatcherServer::handle_cancel, this, _1),
       std::bind(&MatcherServer::handle_accepted, this, _1));

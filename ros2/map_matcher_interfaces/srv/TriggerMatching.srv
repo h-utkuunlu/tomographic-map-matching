@@ -1,2 +1,3 @@
 string target_id
 ---
+bool successful
