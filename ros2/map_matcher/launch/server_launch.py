@@ -24,6 +24,7 @@ def generate_launch_description():
                 plugin="map_matcher_ros::MatcherServer",
                 name="matcher_server",
                 namespace=unitree_id,
+                parameters=[{"map_path": "/data/demo-pcd1.pcd"}],
             )
         ],
         output="screen",

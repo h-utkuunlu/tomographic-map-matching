@@ -9,6 +9,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 namespace map_matcher_ros {
 
@@ -104,25 +105,36 @@ private:
 
   void execute(const std::shared_ptr<GoalHandleMatchMaps> goal_handle)
   {
-    RCLCPP_INFO(this->get_logger(), "Executing goal");
 
     auto feedback = std::make_shared<MatchMaps::Feedback>();
     auto result = std::make_shared<MatchMaps::Result>();
+    const auto goal = goal_handle->get_goal();
 
     // TODO: Add enum codes for status here
+    RCLCPP_INFO(this->get_logger(),
+                "Received map. Num. slices in map: %lu",
+                goal->map.sliced_map.size());
     feedback->status = 0;
     goal_handle->publish_feedback(feedback);
 
+    // ROS -> vector<SlicePtr>
     std::vector<map_matcher::SlicePtr> source_map;
-    const auto goal = goal_handle->get_goal();
-
     ConvertFromROS(goal->map, source_map);
+
+    RCLCPP_INFO(
+      this->get_logger(), "Converted source map. Num. slices: %lu", source_map.size());
+    feedback->status = 1;
+    goal_handle->publish_feedback(feedback);
 
     std::vector<map_matcher::HypothesisPtr> results_all =
       consensus_matcher_->CorrelateSlices(source_map, local_map_);
 
-    // TODO: Parser results_all[0] to result
+    feedback->status = 2;
+    goal_handle->publish_feedback(feedback);
 
+    Eigen::Affine3d pose_affine;
+    pose_affine.matrix() = results_all[0]->pose;
+    result->map_pose = tf2::toMsg(pose_affine);
     goal_handle->succeed(result);
   }
 

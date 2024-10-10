@@ -18,6 +18,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(map_matcher_interfaces REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(pcl_conversions REQUIRED)
+find_package(tf2_eigen REQUIRED)
 
 # Server
 add_library(${CMAKE_PROJECT_NAME}_server_component SHARED src/map_matcher_server.cpp)
@@ -32,6 +33,7 @@ ament_target_dependencies(
   cv_bridge
   pcl_conversions
   map_matcher_interfaces
+  tf2_eigen
 )
 
 rclcpp_components_register_node(
@@ -53,6 +55,7 @@ ament_target_dependencies(
   cv_bridge
   pcl_conversions
   map_matcher_interfaces
+  tf2_eigen
 )
 
 rclcpp_components_register_node(

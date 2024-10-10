@@ -10,6 +10,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 namespace map_matcher_ros {
 
@@ -78,8 +79,6 @@ public:
     return;
   }
 
-  void AttemptMapMatching() { return; }
-
   void TriggerServiceHandle(const std::shared_ptr<TriggerMatching::Request> request,
                             std::shared_ptr<TriggerMatching::Response> response)
   {
@@ -97,7 +96,7 @@ public:
       RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
       response->successful = false;
       return;
-    } else if (!client_ptr_) {
+    } else if (client_ptr_) {
       RCLCPP_ERROR(this->get_logger(), "A client exists already");
       response->successful = false;
       return;
@@ -111,6 +110,8 @@ public:
 
     // Construct and send goal
     auto goal_msg = MatchMaps::Goal();
+    ConvertToROS(local_map_, goal_msg.map);
+
     auto send_goal_options = rclcpp_action::Client<MatchMaps>::SendGoalOptions();
     send_goal_options.goal_response_callback =
       [this](const GoalHandleMatchMaps::SharedPtr& goal_handle) {
@@ -144,19 +145,22 @@ public:
             return;
         }
 
-        const auto translation = result.result->relative_pose.transform.translation;
-        RCLCPP_INFO(this->get_logger(),
-                    "x: %.3f, y: %.3f, z: %.3f",
-                    translation.x,
-                    translation.y,
-                    translation.z);
+        const auto& pose_ros = result.result->map_pose;
+        Eigen::Affine3d pose_eigen;
+        tf2::fromMsg(pose_ros, pose_eigen);
 
-        // std::stringstream ss;
-        // ss << "Result received: ";
-        // for (auto number : result.result->sequence) {
-        //   ss << number << " ";
-        // }
+        Eigen::AngleAxisd axang(pose_eigen.matrix().block<3, 3>(0, 0));
+        double angle = axang.angle() * axang.axis()(2);
+
+        RCLCPP_INFO(this->get_logger(),
+                    "Result received: x: %.5f, y: %.5f, z: %.5f t: %.5f",
+                    pose_ros.position.x,
+                    pose_ros.position.y,
+                    pose_ros.position.z,
+                    angle);
+
         this->client_ptr_.reset();
+        RCLCPP_INFO(this->get_logger(), "Client reset successfully");
       };
     this->client_ptr_->async_send_goal(goal_msg, send_goal_options);
   }

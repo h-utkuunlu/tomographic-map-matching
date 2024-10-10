@@ -1,5 +1,5 @@
 map_matcher_interfaces/SliceMap map
 ---
-geometry_msgs/TransformStamped relative_pose
+geometry_msgs/Pose map_pose
 ---
 uint8 status

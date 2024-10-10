@@ -9,6 +9,7 @@ services:
       - /dev/dri:/dev/dri
       - /etc/localtime:/etc/localtime:ro
       - ./:/home/ubuntu/ros_ws/src/tomographic-map-matching
+      - ./data:/data:ro
     deploy:
       resources:
         reservations:
