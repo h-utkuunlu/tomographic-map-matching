@@ -9,6 +9,7 @@ find_package(ament_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -16,8 +17,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Slice.msg"
   "msg/SliceMap.msg"
   "srv/TriggerMatching.srv"
-  "action/MatchMaps.action"
-  DEPENDENCIES std_msgs geometry_msgs sensor_msgs
+  "action/MatchSliceMaps.action"
+  "action/MatchPointCloudMaps.action"
+  DEPENDENCIES std_msgs geometry_msgs sensor_msgs nav_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime)

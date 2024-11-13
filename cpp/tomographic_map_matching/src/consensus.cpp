@@ -71,6 +71,11 @@ Consensus::RegisterPointCloudMaps(const PointCloud::Ptr source,
   for (const auto& slice : source_slice)
     source_nfeat += slice->kp.size();
 
+  spdlog::warn("Slice desc dims: kps: {} rows: {} cols: {}",
+               target_slice[0]->kp.size(),
+               target_slice[0]->desc.rows,
+               target_slice[0]->desc.cols);
+
   stats["t_feature_extraction"] = CalculateTimeSince(indiv);
   stats["target_num_features"] = target_nfeat;
   stats["source_num_features"] = source_nfeat;
@@ -78,6 +83,11 @@ Consensus::RegisterPointCloudMaps(const PointCloud::Ptr source,
 
   std::vector<HypothesisPtr> slice_correlations =
     CorrelateSlices(source_slice, target_slice);
+
+  if (slice_correlations.size() == 0) {
+    spdlog::warn("No correlation established. Is one of the maps empty?");
+    return std::make_shared<Hypothesis>();
+  }
 
   HypothesisPtr result = slice_correlations[0];
 

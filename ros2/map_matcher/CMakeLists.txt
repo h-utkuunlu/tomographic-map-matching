@@ -18,6 +18,8 @@ find_package(rclcpp_components REQUIRED)
 find_package(map_matcher_interfaces REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(pcl_conversions REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 
 # Server
@@ -34,6 +36,8 @@ ament_target_dependencies(
   pcl_conversions
   map_matcher_interfaces
   tf2_eigen
+  nav_msgs
+  sensor_msgs
 )
 
 rclcpp_components_register_node(
@@ -56,6 +60,8 @@ ament_target_dependencies(
   pcl_conversions
   map_matcher_interfaces
   tf2_eigen
+  nav_msgs
+  sensor_msgs
 )
 
 rclcpp_components_register_node(
@@ -68,11 +74,6 @@ install(
   TARGETS ${CMAKE_PROJECT_NAME}_server_component ${CMAKE_PROJECT_NAME}_client_component
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
-)
-
-install(
-  DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}/
 )
 
 ament_package()

@@ -1,18 +1,16 @@
+volumes:
+  ros-home:
+    external: true
+
 services:
-  tomographic_map_matching:
+  cair_unitree_tomographic:
     build: .
+    image: cair_unitree_tomographic
     network_mode: host
-    environment:
-      - DISPLAY
-      - TERM
+    privileged: true
     volumes:
-      - /dev/dri:/dev/dri
       - /etc/localtime:/etc/localtime:ro
-      - ./:/home/ubuntu/ros_ws/src/tomographic-map-matching
-      - ./data:/data:ro
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: [gpu]
+      - ros-home:/root
+    environment:
+      - UNITREE_ID
+      - TERM

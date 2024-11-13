@@ -1,5 +1,0 @@
-map_matcher_interfaces/SliceMap map
----
-geometry_msgs/Pose map_pose
----
-uint8 status

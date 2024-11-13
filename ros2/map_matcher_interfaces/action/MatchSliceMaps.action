@@ -1,0 +1,7 @@
+map_matcher_interfaces/SliceMap map
+nav_msgs/OccupancyGrid grid_map
+---
+geometry_msgs/Pose map_pose
+nav_msgs/OccupancyGrid grid_map
+---
+string status
