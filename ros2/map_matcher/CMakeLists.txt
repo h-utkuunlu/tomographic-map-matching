@@ -21,6 +21,8 @@ find_package(pcl_conversions REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
+find_package(rosbag2_cpp REQUIRED)
+find_package(rosbag2_compression REQUIRED)
 
 # Server
 add_library(${CMAKE_PROJECT_NAME}_server_component SHARED src/map_matcher_server.cpp)
@@ -70,10 +72,39 @@ rclcpp_components_register_node(
   EXECUTABLE map_matcher_client
 )
 
+# Bandwidth estimations
+add_library(${CMAKE_PROJECT_NAME}_bandwidth_component SHARED src/bandwidth_estimator.cpp)
+target_compile_features(${CMAKE_PROJECT_NAME}_bandwidth_component PUBLIC cxx_std_20)
+target_link_libraries(${CMAKE_PROJECT_NAME}_bandwidth_component tomographic_map_matching)
+
+ament_target_dependencies(
+  ${CMAKE_PROJECT_NAME}_bandwidth_component
+  rclcpp
+  rclcpp_components
+  rosbag2_cpp
+  cv_bridge
+  pcl_conversions
+  map_matcher_interfaces
+  tf2_eigen
+  sensor_msgs
+  rosbag2_compression
+)
+
+rclcpp_components_register_node(
+  ${CMAKE_PROJECT_NAME}_bandwidth_component
+  PLUGIN "map_matcher_ros::BandwidthEstimator"
+  EXECUTABLE map_matcher_bandwidth
+)
+
 install(
-  TARGETS ${CMAKE_PROJECT_NAME}_server_component ${CMAKE_PROJECT_NAME}_client_component
+  TARGETS ${CMAKE_PROJECT_NAME}_server_component ${CMAKE_PROJECT_NAME}_client_component ${CMAKE_PROJECT_NAME}_bandwidth_component
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
 )
 
 ament_package()
