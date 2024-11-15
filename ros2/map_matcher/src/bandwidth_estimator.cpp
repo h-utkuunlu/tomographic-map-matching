@@ -42,14 +42,6 @@ public:
       exit(-1);
     }
 
-    // Set up matcher
-    map_matcher::json parameter_config;
-    {
-      std::ifstream parameter_config_file(param_config_path.string());
-      parameter_config = map_matcher::json::parse(parameter_config_file);
-    }
-    consensus_matcher_ = std::make_unique<map_matcher::Consensus>(parameter_config);
-
     // Obtain timestamp for folder naming
     std::string time_string;
     {
@@ -63,6 +55,23 @@ public:
     if (!std::filesystem::exists(time_string)) {
       std::filesystem::create_directory(time_string);
     }
+
+    // Metadata for later identification
+    {
+      map_matcher::json estimation_config;
+      estimation_config["parameter_config_file"] = param_config_path.string();
+      estimation_config["data_config_file"] = data_config_path.string();
+      std::ofstream f(time_string + "/estimation-config.yaml");
+      f << std::setw(2) << estimation_config << std::endl;
+    }
+
+    // Set up matcher
+    map_matcher::json parameter_config;
+    {
+      std::ifstream parameter_config_file(param_config_path.string());
+      parameter_config = map_matcher::json::parse(parameter_config_file);
+    }
+    consensus_matcher_ = std::make_unique<map_matcher::Consensus>(parameter_config);
 
     // Bags to write
     {
